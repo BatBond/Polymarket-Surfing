@@ -1,0 +1,7 @@
+cat > package.json << 'EOF'
+{
+  "name": "polymarket-surfing",
+  "version": "1.0.0",
+  "private": true
+}
+EOF
