@@ -1,9 +1,5 @@
 {
-  "name": "polymarket-surfing",
+  "name": "kalshi-surfing",
   "version": "1.0.0",
-  "private": true,
-  "dependencies": {
-    "@polymarket/clob-client": "^5.8.1",
-    "ethers": "^6.17.0"
-  }
+  "private": true
 }

@@ -1,28 +1,28 @@
-const API_URLS = {
-  'poly-clob': 'https://clob.polymarket.com',
-  'poly-gamma': 'https://gamma-api.polymarket.com',
-  'poly-data': 'https://data-api.polymarket.com',
-  'kalshi': 'https://api.kalshi.com/trade-api/v2'
-};
+// api/proxy.js
+// ---------------------------------------------------------------------------
+// Public, unauthenticated Kalshi market data proxy.
+//
+// GET /api/proxy?endpoint=markets?limit=50&status=open
+//
+// The `endpoint` query param is appended verbatim to
+// https://api.kalshi.com/trade-api/v2/  — include query string params as
+// part of the endpoint (URL-encoded if needed).
+// ---------------------------------------------------------------------------
+
+const BASE_URL = 'https://api.kalshi.com/trade-api/v2';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { platform, endpoint } = req.query;
-
-  if (!platform || !endpoint) {
-    return res.status(400).json({ error: 'Missing platform or endpoint' });
-  }
-
-  const baseUrl = API_URLS[platform];
-  if (!baseUrl) {
-    return res.status(400).json({ error: 'Invalid platform' });
+  const { endpoint } = req.query;
+  if (!endpoint) {
+    return res.status(400).json({ error: 'Missing ?endpoint=' });
   }
 
   try {
-    const url = `${baseUrl}/${endpoint}`;
+    const url = `${BASE_URL}/${endpoint}`;
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
@@ -33,8 +33,8 @@ export default async function handler(req, res) {
     const data = await response.json();
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 's-maxage=10');
-    return res.status(200).json(data);
+    return res.status(response.ok ? 200 : response.status).json(data);
   } catch (error) {
-    return res.status(502).json({ error: 'Upstream request failed' });
+    return res.status(502).json({ error: 'Upstream request failed', detail: String(error) });
   }
 }

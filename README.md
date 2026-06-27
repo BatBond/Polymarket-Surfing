@@ -1,17 +1,21 @@
-# Polymarket Surfing — FABLE ELITE v6.0
+# Kalshi Surfing — FABLE ELITE v7.0
 
-Autonomous quantitative trading system for **Kalshi** (US-legal) and **Polymarket** (non-US only).
+Quantitative trading dashboard for **Kalshi** (CFTC-registered, US-legal). Polymarket has been removed entirely — this build is Kalshi-only.
 
 ---
 
-## ⚠️ Region notice — read first
+## ⚠️ Read this first — why your trades weren't showing up on Kalshi
 
-| Platform   | US residents | Non-US residents |
-|------------|--------------|------------------|
-| **Kalshi** | ✅ Fully supported (CFTC-registered DCM) | ✅ Supported |
-| **Polymarket** | ❌ Blocked (CFTC 2022 settlement — Polymarket geofences the US and bans US persons in its ToS) | ✅ Supported |
+If you ran the previous version, pressed "Start Bot", and saw trades appear in the dashboard but **nothing showed up in your Kalshi account**, the reason is:
 
-If you are in the US, **use Kalshi only**. Trying to reach Polymarket from the US via VPN violates Polymarket's terms and can get your funds frozen; this repo will not help you do that. The Polymarket code paths are kept in place so the same dashboard works for users in supported regions.
+1. **The previous bot was in PAPER mode by default** — it simulated trades locally in your browser's memory and never made any network call to Kalshi. The "trades" you saw were animations.
+2. **Even in LIVE mode, the previous version never called `/api/order`** — the bot's trade loop only updated local state. It was a UI demo, not a real trading client.
+3. **Your Kalshi API keys were probably not set** — without `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` in Vercel env vars, the `/api/order` route returns a 500 error before any order can be placed.
+
+**This version fixes all three:**
+- The bot now actually calls `POST /api/order` when in LIVE mode
+- The "Manual Order" tab has a **Submit to Kalshi** button that fires a real order immediately
+- The dashboard fetches your real Kalshi balance on page load (and shows a clear error if keys are missing)
 
 ---
 
@@ -19,16 +23,16 @@ If you are in the US, **use Kalshi only**. Trying to reach Polymarket from the U
 
 ```
 .
-├── index.html           Dashboard UI (Tailwind + vanilla JS)
-├── package.json         Declares @polymarket/clob-client + ethers
+├── index.html           Dashboard UI (Kalshi-only, real order submission)
+├── package.json         No runtime deps — Vercel builds the API natively
 ├── vercel.json          Tells Vercel: no framework, no build step
 ├── .gitignore
-├── .env.example         Template for all API keys (DO NOT commit the real .env)
+├── .env.example         Template for Kalshi API keys
 ├── api/
-│   ├── proxy.js         Public market data (read-only, no keys)
-│   ├── order.js         Authenticated order placement  ← $30–50 guardrail lives here
-│   ├── balance.js       Authenticated balance fetch
-│   └── keys.js          Polymarket L2 HMAC + Kalshi RSA signing helpers
+│   ├── proxy.js         Public Kalshi market data (no auth needed)
+│   ├── order.js         Authenticated order placement  ← $30-50 guardrail
+│   ├── balance.js       Authenticated balance + positions fetch
+│   └── keys.js          Kalshi RSA-SHA256 signing + cap enforcement
 └── README.md
 ```
 
@@ -39,16 +43,16 @@ If you are in the US, **use Kalshi only**. Trying to reach Polymarket from the U
 1. Push this folder to a GitHub repo.
 2. Import the repo at <https://vercel.com/new>.
 3. **Framework Preset** → *Other*.
-4. Leave **Build Command**, **Output Directory**, and **Install Command** empty (Vercel auto-installs from `package.json`).
+4. Leave **Build Command**, **Output Directory**, and **Install Command** empty.
 5. Click **Deploy**.
 
-Vercel will install `@polymarket/clob-client` and `ethers` from `package.json` automatically — these are needed server-side for Polymarket EIP-712 order signing.
+No `npm install` is needed — the API routes use only Node's built-in `crypto` module.
 
 ---
 
-## Kalshi setup (US residents start here)
+## Kalshi API key setup (required for real trading)
 
-1. Create an account at <https://kalshi.com> and complete KYC (SSN + ID). This usually takes under an hour.
+1. Create an account at <https://kalshi.com> and complete KYC (SSN + ID). Usually takes under an hour.
 2. Generate an RSA keypair locally:
    ```bash
    openssl genrsa -out kalshi_private.pem 2048
@@ -58,41 +62,51 @@ Vercel will install `@polymarket/clob-client` and `ethers` from `package.json` a
 4. In your Vercel project, go to **Settings → Environment Variables** and add:
    - `KALSHI_KEY_ID` — the Key ID from step 3
    - `KALSHI_PRIVATE_KEY_PEM` — full contents of `kalshi_private.pem` (paste as one string, you can keep the `\n` newlines)
-5. Redeploy. The dashboard's `/api/balance?platform=kalshi` and `/api/order` (with `platform: "kalshi"`) routes are now live.
+5. **Redeploy** (Vercel → Deployments → click the menu on the latest → Redeploy). Env var changes do NOT apply to already-running deployments.
 
-**Funding Kalshi:** Kalshi takes USD deposits via bank transfer only — no crypto. Trades settle in USD. The $30–50 cap in this repo is on per-order notional; your Kalshi account balance is separate. Fund the account with however much you want — the per-order guardrail still applies.
+**Funding Kalshi:** Bank transfer only (no crypto). The $30–50 cap is on per-order notional — your account balance is separate. Fund with however much you want; each order is still capped.
 
 ---
 
-## Polymarket setup (non-US residents only)
+## How to verify your keys are working
 
-Polymarket order placement requires **two** signing layers:
+After redeploying with the env vars set:
 
-1. **L2 HMAC headers** — authenticate the API call (handled in `api/keys.js`).
-2. **EIP-712 order signature** — binds the order to your EVM wallet so the CLOB can verify it (produced by `@polymarket/clob-client`).
+1. Open your deployed dashboard.
+2. Look at the **System Log** (bottom right of the Manual Order tab, or any tab's log section).
+3. On page load, you should see one of:
+   - ✅ `Live Kalshi balance loaded on startup: $X.XX` — keys work, balance fetched
+   - ⚠️ `Kalshi API reachable but account balance is $0 — fund your account` — keys work, account empty
+   - ❌ `Kalshi API not configured. Set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM...` — env vars missing or wrong
+4. Click **"Fetch Live Kalshi Markets"** in the Markets tab — you should see real market tickers populate the table.
 
-To get your L2 credentials:
+If you see the ❌ message, your env vars are either not set, set on the wrong environment (Production vs Preview), or you didn't redeploy after setting them.
 
-```js
-// One-time setup script — run locally with: node scripts/gen-poly-creds.js
-import { ClobClient } from '@polymarket/clob-client';
-import { ethers } from 'ethers';
+---
 
-const wallet = new ethers.Wallet(process.env.POLY_PRIVATE_KEY);
-const client = new ClobClient('https://clob.polymarket.com', 137, wallet);
-const creds = await client.createOrDeriveApiCreds();
-console.log(creds); // { apiKey, secret, passphrase }
-```
+## How to actually place a real trade
 
-Then set these env vars in Vercel:
+### Option A — Manual order (recommended for your first trade)
 
-- `POLY_API_KEY`
-- `POLY_SECRET`
-- `POLY_PASSPHRASE`
-- `POLY_ADDRESS` — your wallet address (0x…)
-- `POLY_PRIVATE_KEY` — your EVM private key (server-only, never sent to the browser)
+1. Open the **Markets** tab → click **Fetch Live Kalshi Markets**.
+2. Find a market you want to trade → click the **→** button on its row. This loads the ticker into the Manual Order form and switches you to that tab.
+3. Pick **YES** or **NO**, set the **Price** (in cents, 1–99), and the **Size** (number of contracts).
+4. The **Order Notional** preview updates live. It must land between **$30 and $50** — the box turns green when it's in range, red when it's not.
+5. Click **Submit to Kalshi**.
+6. Watch the **Execution Log** on the right:
+   - `ACCEPTED` → order went through, check your Kalshi dashboard to confirm
+   - `REJECTED: <reason>` → the server's guardrail blocked it OR Kalshi rejected it (insufficient funds, invalid ticker, market closed, etc.)
+7. Cross-check in your Kalshi account at <https://kalshi.com/portfolio> — the order should appear within a few seconds.
 
-**Funding Polymarket:** Deposit USDC on Polygon to your wallet address. Trades settle in USDC.
+### Option B — Bot in LIVE mode
+
+1. In the **Bot Control** tab, toggle from **PAPER** to **LIVE**. The mode banner at the top turns red and warns you.
+2. Click **Start Bot**.
+3. Every 4 seconds, if the bot's signal logic finds a trade opportunity, it will POST a real order to `/api/order`. Each order is bounded to $30–50 by the server.
+4. Live orders appear in the Positions tab with a gold **LIVE** badge and **SUBMITTED** status.
+5. Watch the System Log for `[LIVE OK]` (accepted) or `[LIVE FAIL]` (rejected) messages.
+
+⚠️ **LIVE mode will spend real money.** Start in PAPER mode first to verify the bot's signal logic isn't doing anything crazy. When you switch to LIVE, monitor the first few orders closely.
 
 ---
 
@@ -100,17 +114,22 @@ Then set these env vars in Vercel:
 
 Enforced in `api/keys.js` → `enforceCap(price, size)` and called at the top of `api/order.js`. The check runs **before** any network call, and the constants (`MIN_POSITION_USD = 30`, `MAX_POSITION_USD = 50`) live server-side — there are no env vars or query params to override them from the browser.
 
-- Orders with notional `< $30` are rejected (prevents dust / test orders)
-- Orders with notional `> $50` are rejected (hard cap)
+- Orders with notional `< $30` → rejected (prevents dust / test orders)
+- Orders with notional `> $50` → rejected (hard cap)
 - The dashboard's "Max Position ($)" input is clamped to `min=30 max=50` and defaults to `$30`
 
-If you want a different range, edit both constants in `api/keys.js` and redeploy. Don't expose them as env vars; if you do, anyone with browser access can change them client-side.
+To change the range, edit both constants in `api/keys.js` and redeploy.
+
+---
 
 ## Starting portfolio
 
-The dashboard ships with **$0** starting paper balance — no fake $50K seed, no pre-loaded positions, no trade history. Press **Start Bot** and it begins cleanly from zero. The displayed Portfolio value reflects realized P&L as the paper bot opens and closes positions.
+The dashboard ships with **$0** starting balance. On page load, it tries to fetch your real Kalshi balance via `/api/balance`:
 
-For live mode, your real wallet balance is fetched via `/api/balance?platform=kalshi` once your Kalshi keys are set.
+- **If keys are set and account is funded** → the Portfolio stat card shows your real Kalshi USD balance.
+- **If keys are not set or fetch fails** → stays at $0, and the System Log explains what to fix.
+- **In PAPER mode** → paper trades adjust the local balance; live balance is shown for reference only.
+- **In LIVE mode** → real orders hit Kalshi; rebalance by clicking **Refresh Balance** to re-pull from the API.
 
 ---
 
@@ -118,18 +137,17 @@ For live mode, your real wallet balance is fetched via `/api/balance?platform=ka
 
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
-| `/api/proxy?platform=…&endpoint=…` | GET | none | Public market data (markets, prices, order books) |
-| `/api/balance?platform=kalshi\|polymarket` | GET | L2 / RSA | Wallet balance |
-| `/api/order` | POST | L2 / RSA | Place a limit order (subject to $30–50 guardrail) |
+| `/api/proxy?endpoint=…` | GET | none | Public Kalshi market data |
+| `/api/balance` | GET | RSA | Wallet balance + open positions |
+| `/api/order` | POST | RSA | Place a limit order (subject to $30–50 cap) |
 
-### Place an order (example)
+### Place an order via curl
 
 ```bash
 # ✅ Allowed — notional $35.00 is inside the $30–50 range
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
   -d '{
-    "platform": "kalshi",
     "market": "KXBTC-26DEC31-B500000",
     "side": "yes",
     "price": 35,
@@ -140,7 +158,6 @@ curl -X POST https://your-app.vercel.app/api/order \
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
   -d '{
-    "platform": "kalshi",
     "market": "KXBTC-26DEC31-B500000",
     "side": "yes",
     "price": 25,
@@ -151,7 +168,6 @@ curl -X POST https://your-app.vercel.app/api/order \
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
   -d '{
-    "platform": "kalshi",
     "market": "KXBTC-26DEC31-B500000",
     "side": "yes",
     "price": 60,
@@ -161,15 +177,18 @@ curl -X POST https://your-app.vercel.app/api/order \
 
 ---
 
-## Why is Polymarket not working from the US?
+## Troubleshooting — "I clicked submit but nothing happened on Kalshi"
 
-A few things people commonly try, and why none of them are sustainable:
-
-1. **VPN to a non-US IP** — Polymarket logs IP at signup and at every CLOB auth; their ToS bans US persons regardless of IP. Detected accounts are frozen and USDC clawed back. Not worth it.
-2. **Using a non-US friend's wallet** — that's their account, not yours; they own the funds legally.
-3. **Self-hosting the proxy on a non-US server** — same problem; Polymarket still sees the wallet's KYC/registration region.
-
-The repo's Polymarket code is correct and will work the moment you're physically and legally in a supported region. For US trading, Kalshi is the answer.
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Dashboard shows ❌ "Kalshi API not configured" | Env vars not set, or set on Preview but not Production | Vercel → Settings → Environment Variables → ensure both `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` exist for **Production** environment. Then Redeploy. |
+| Order returns 500 with "Kalshi credentials not set on server" | Same as above | Same as above |
+| Order returns 400 with "below the $30 minimum" or "exceeds the $50 hard cap" | Your price × size notional is outside $30–50 | Adjust price or size until the notional preview turns green |
+| Order returns 4xx with `detail` from Kalshi | Insufficient funds, invalid ticker, market closed, or signature error | Read the `detail` field in the response — Kalshi tells you exactly what's wrong |
+| Order returns 401 / "Invalid signature" | Your private key doesn't match the public key uploaded to Kalshi, or the key was regenerated | Regenerate keypair, re-upload public key to Kalshi, update `KALSHI_PRIVATE_KEY_PEM` env var |
+| Bot in LIVE mode shows `[LIVE FAIL]` repeatedly | Same causes as above | Check the System Log — each failure has the reason |
+| Bot in PAPER mode shows no trades | Signals not confident enough, or already at max concurrent positions | Lower the `Max Concurrent` value or wait — the bot only trades when its signal threshold is met |
+| Dashboard loads but markets tab is empty | You haven't clicked "Fetch Live Kalshi Markets" yet | Click the button |
 
 ---
 

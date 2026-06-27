@@ -1,51 +1,11 @@
 // api/keys.js
 // ---------------------------------------------------------------------------
-// Authentication helpers for Polymarket CLOB (L2 HMAC) and Kalshi (RSA-SHA256).
-// Both secrets are read from environment variables on the server and NEVER
+// Kalshi authentication helpers + position-size guardrails.
+// Kalshi secrets are read from environment variables on the server and NEVER
 // exposed to the browser. The browser only ever talks to /api/* routes.
 // ---------------------------------------------------------------------------
 
 import crypto from 'crypto';
-
-// ---------------------------------------------------------------------------
-// Polymarket CLOB — L2 header signing
-// https://docs.polymarket.com/developers/CLOB/authentication
-// ---------------------------------------------------------------------------
-// Credentials come from your wallet (see README "Polymarket Setup").
-// POLY_API_KEY      — string
-// POLY_SECRET       — base64 string (keep this secret!)
-// POLY_PASSPHRASE   — string
-// POLY_ADDRESS      — your EVM wallet address (0x...)
-//
-// L2 signature = HMAC-SHA256(secret_b64_decoded, timestamp + METHOD + path + body)
-//               -> base64
-// ---------------------------------------------------------------------------
-
-export function polyL2Headers({ apiKey, secret, passphrase, address }, method, path, body = '') {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const message = `${timestamp}${method.toUpperCase()}${path}${body || ''}`;
-  const sig = crypto
-    .createHmac('sha256', Buffer.from(secret, 'base64'))
-    .update(message)
-    .digest('base64');
-
-  return {
-    'POLY_ADDRESS': address,
-    'POLY_SIGNATURE': sig,
-    'POLY_TIMESTAMP': timestamp,
-    'POLY_API_KEY': apiKey,
-    'POLY_PASSPHRASE': passphrase,
-  };
-}
-
-export function getPolyCreds() {
-  return {
-    apiKey: process.env.POLY_API_KEY,
-    secret: process.env.POLY_SECRET,
-    passphrase: process.env.POLY_PASSPHRASE,
-    address: process.env.POLY_ADDRESS,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Kalshi — RSA-SHA256 request signing
