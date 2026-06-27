@@ -5,7 +5,7 @@
 // GET /api/balance
 // ---------------------------------------------------------------------------
 
-import { kalshiHeaders, getKalshiCreds, hasKalshiCreds } from './keys.js';
+import { kalshiHeaders, getKalshiCreds, hasKalshiCreds, fetchWithRetry } from './keys.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
   const creds = getKalshiCreds();
 
   try {
-    // Test signing works (bad PEM throws here)
     let balHeaders;
     try {
       balHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balances');
@@ -33,33 +32,46 @@ export default async function handler(req, res) {
       });
     }
 
-    const balRes = await fetch('https://api.kalshi.com/trade-api/v2/portfolio/balances', { headers: balHeaders });
-    const balance = await balRes.json();
-    if (!balRes.ok) {
-      return res.status(balRes.status).json({ error: 'Kalshi rejected balance fetch', detail: balance });
+    const balResult = await fetchWithRetry(
+      'https://api.kalshi.com/trade-api/v2/portfolio/balances',
+      { headers: balHeaders }
+    );
+
+    if (balResult.networkError) {
+      const cause = balResult.lastError ? balResult.lastError.cause : null;
+      return res.status(502).json({
+        error: 'Network error reaching Kalshi after 3 retries + fallback',
+        cause: cause,
+        attempts: balResult.attempts,
+        hint: cause === 'ENOTFOUND' ?
+          'DNS resolution failed for api.kalshi.com after multiple attempts. Try redeploying.' :
+          'Check Vercel function logs.',
+      });
+    }
+
+    if (!balResult.ok) {
+      return res.status(balResult.status).json({ error: 'Kalshi rejected balance fetch', detail: balResult.data });
     }
 
     // Try to also fetch positions (non-fatal if it fails)
     let positions = null;
     try {
       const posHeaders = kalshiHeaders(creds, 'GET', '/portfolio/positions');
-      const posRes = await fetch('https://api.kalshi.com/trade-api/v2/portfolio/positions', { headers: posHeaders });
-      if (posRes.ok) positions = await posRes.json();
+      const posResult = await fetchWithRetry(
+        'https://api.kalshi.com/trade-api/v2/portfolio/positions',
+        { headers: posHeaders }
+      );
+      if (posResult.ok) positions = posResult.data;
     } catch (e) {
       // positions fetch is best-effort
     }
 
-    return res.status(200).json({ platform: 'kalshi', balance, positions });
+    return res.status(200).json({ platform: 'kalshi', balance: balResult.data, positions });
   } catch (err) {
     console.error('[balance]', err);
-    const cause = err.cause ? (err.cause.code || err.cause.message) : null;
     return res.status(502).json({
-      error: 'Network error reaching Kalshi',
+      error: 'Unexpected error in balance handler',
       message: err.message,
-      cause: cause,
-      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com' :
-            cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' ? 'Connection timeout — Kalshi may be blocking Vercel IPs' :
-            'Check Vercel function logs',
     });
   }
 }

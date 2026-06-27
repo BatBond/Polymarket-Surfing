@@ -637,8 +637,9 @@ function brainExecute(candidate){
           var errMsg=d.error||JSON.stringify(d.detail||'');
           if(d.cause)errMsg+=' (cause: '+d.cause+')';
           if(d.hint)errMsg+=' — '+d.hint;
+          if(d.attempts)errMsg+=' [attempts: '+d.attempts.length+']';
           addLog('[BRAIN-LIVE FAIL] '+errMsg,'risk');
-          showToast('AI Brain order rejected: '+(d.error||'see log')+(d.hint?' — '+d.hint:''),'error');
+          showToast('AI Brain order rejected — click Test Connection to diagnose','error');
         }
         setPipelineStage('done');
         setTimeout(function(){if(brain.running)setPipelineStage('idle')},2000);

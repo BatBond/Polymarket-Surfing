@@ -1,18 +1,16 @@
 // api/health.js
 // ---------------------------------------------------------------------------
 // Health check endpoint that tests:
-//   1. Whether Kalshi API is reachable from the server
+//   1. Whether Kalshi API is reachable from the server (markets endpoint)
 //   2. Whether Kalshi credentials are configured and parseable
 //   3. Whether auth headers can be signed (PEM is valid)
 //   4. Whether Kalshi accepts the auth (balance fetch succeeds)
+//   5. Whether the order endpoint URL is reachable (POST with empty body)
 //
 // GET /api/health
-//
-// Returns a structured status report. The dashboard uses this to give the
-// user a clear "what's wrong" message instead of generic errors.
 // ---------------------------------------------------------------------------
 
-import { kalshiHeaders, getKalshiCreds, hasKalshiCreds } from './keys.js';
+import { kalshiHeaders, getKalshiCreds, hasKalshiCreds, fetchWithRetry } from './keys.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
@@ -22,16 +20,17 @@ export default async function handler(req, res) {
     timestamp: new Date().toISOString(),
     steps: [],
     overall: 'unknown',
+    vercel_region: process.env.VERCEL_REGION || 'unknown',
   };
 
-  // STEP 1: Kalshi API reachable?
+  // STEP 1: Kalshi API reachable (markets endpoint, no auth needed for this test)
   try {
     const r = await fetch('https://api.kalshi.com/trade-api/v2/markets?limit=1', {
       headers: { 'Accept': 'application/json', 'User-Agent': 'FableElite/8.1-health' },
     });
     report.steps.push({
-      name: 'Kalshi API reachable',
-      pass: r.ok || r.status === 401, // 401 means reachable but needs auth — still reachable
+      name: 'Kalshi API reachable (markets endpoint)',
+      pass: r.ok || r.status === 401,
       status: r.status,
       detail: r.ok ? 'Yes — markets endpoint responded' :
               r.status === 401 ? 'Reachable but requires auth (expected)' :
@@ -40,11 +39,11 @@ export default async function handler(req, res) {
   } catch (err) {
     const cause = err.cause ? (err.cause.code || err.cause.message) : err.message;
     report.steps.push({
-      name: 'Kalshi API reachable',
+      name: 'Kalshi API reachable (markets endpoint)',
       pass: false,
       detail: 'No — ' + cause,
-      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed. Vercel may be having network issues.' :
-            cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT' ? 'Connection timed out. Kalshi may be blocking Vercel IPs.' :
+      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com. This is a Vercel network issue. Try redeploying, or check Vercel status page. If it persists, your Vercel region ('+report.vercel_region+') may have network restrictions.' :
+            cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT' ? 'Connection timed out. Kalshi may be blocking Vercel IPs in your region ('+report.vercel_region+').' :
             'Network error: ' + cause,
     });
     report.overall = 'fail';
@@ -81,35 +80,91 @@ export default async function handler(req, res) {
     return res.status(200).json(report);
   }
 
-  // STEP 4: Does Kalshi accept our auth?
+  // STEP 4: Does Kalshi accept our auth? (uses fetchWithRetry now)
   try {
-    const r = await fetch('https://api.kalshi.com/trade-api/v2/portfolio/balances', { headers: testHeaders });
-    const data = await r.json();
-    if (r.ok) {
+    const balResult = await fetchWithRetry(
+      'https://api.kalshi.com/trade-api/v2/portfolio/balances',
+      { headers: testHeaders }
+    );
+
+    if (balResult.networkError) {
+      const cause = balResult.lastError ? balResult.lastError.cause : null;
       report.steps.push({
-        name: 'Kalshi accepts auth',
-        pass: true,
-        detail: 'Yes — balance: ' + JSON.stringify(data).substring(0, 200),
+        name: 'Kalshi accepts auth (balance fetch)',
+        pass: false,
+        detail: 'Network error after 3 retries: ' + cause,
+        hint: 'Despite step 1 passing, the balance fetch failed. This suggests intermittent network issues. Try again, or check Vercel region: ' + report.vercel_region,
       });
-      report.overall = 'ok';
+      report.overall = 'fail';
+      return res.status(200).json(report);
+    }
+
+    if (balResult.ok) {
+      report.steps.push({
+        name: 'Kalshi accepts auth (balance fetch)',
+        pass: true,
+        detail: 'Yes — balance: ' + JSON.stringify(balResult.data).substring(0, 200),
+      });
     } else {
       report.steps.push({
-        name: 'Kalshi accepts auth',
+        name: 'Kalshi accepts auth (balance fetch)',
         pass: false,
-        status: r.status,
-        detail: 'No — Kalshi returned ' + r.status + ': ' + JSON.stringify(data).substring(0, 200),
-        hint: r.status === 401 ? 'Private key does not match the public key uploaded to Kalshi. Regenerate keypair, re-upload public key to Kalshi dashboard, update KALSHI_PRIVATE_KEY_PEM env var.' :
-              r.status === 403 ? 'Account may not have trading permissions enabled. Check Kalshi account status.' :
+        status: balResult.status,
+        detail: 'No — Kalshi returned ' + balResult.status + ': ' + JSON.stringify(balResult.data).substring(0, 200),
+        hint: balResult.status === 401 ? 'Private key does not match the public key uploaded to Kalshi. Regenerate keypair, re-upload public key to Kalshi dashboard, update KALSHI_PRIVATE_KEY_PEM env var.' :
+              balResult.status === 403 ? 'Account may not have trading permissions enabled. Check Kalshi account status.' :
               'Kalshi rejected the request. Check the detail field.',
       });
       report.overall = 'fail';
+      return res.status(200).json(report);
     }
   } catch (err) {
     const cause = err.cause ? (err.cause.code || err.cause.message) : err.message;
     report.steps.push({
-      name: 'Kalshi accepts auth',
+      name: 'Kalshi accepts auth (balance fetch)',
       pass: false,
       detail: 'Network error: ' + cause,
+    });
+    report.overall = 'fail';
+    return res.status(200).json(report);
+  }
+
+  // STEP 5: Test the order endpoint URL specifically (POST with empty body)
+  // This will fail with 400/401 but if it returns ANY HTTP response, the
+  // URL is reachable. If it throws, we have a network issue specific to POST.
+  try {
+    const orderHeaders = {
+      'Content-Type': 'application/json',
+      ...kalshiHeaders(creds, 'POST', '/portfolio/orders'),
+    };
+    const orderResult = await fetchWithRetry(
+      'https://api.kalshi.com/trade-api/v2/portfolio/orders',
+      { method: 'POST', headers: orderHeaders, body: JSON.stringify({}) }
+    );
+
+    if (orderResult.networkError) {
+      const cause = orderResult.lastError ? orderResult.lastError.cause : null;
+      report.steps.push({
+        name: 'Order endpoint reachable (POST)',
+        pass: false,
+        detail: 'Network error after retries: ' + cause,
+        hint: 'GET requests work but POST fails. This can be a Vercel network issue with POST bodies, or Kalshi rate-limiting. Try again in a few minutes.',
+      });
+      report.overall = 'fail';
+    } else {
+      // Any HTTP response (even 400 for bad body) means the URL is reachable
+      report.steps.push({
+        name: 'Order endpoint reachable (POST)',
+        pass: true,
+        detail: 'Yes — HTTP ' + orderResult.status + ' (expected 400 for empty body, this confirms the endpoint is reachable)',
+      });
+      report.overall = 'ok';
+    }
+  } catch (err) {
+    report.steps.push({
+      name: 'Order endpoint reachable (POST)',
+      pass: false,
+      detail: 'Error: ' + err.message,
     });
     report.overall = 'fail';
   }

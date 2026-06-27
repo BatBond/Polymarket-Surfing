@@ -6,6 +6,8 @@
 // ---------------------------------------------------------------------------
 
 import crypto from 'crypto';
+import https from 'node:https';
+import { URL } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Kalshi — RSA-SHA256 request signing
@@ -59,6 +61,120 @@ export function hasKalshiCreds() {
   const c = getKalshiCreds();
   return !!(c.keyId && c.privateKeyPem &&
     c.privateKeyPem.includes('BEGIN') && c.privateKeyPem.includes('END'));
+}
+
+// ---------------------------------------------------------------------------
+// fetchWithRetry — wraps fetch() with:
+//   • 10s timeout per attempt (Vercel Hobby's 10s function limit)
+//   • Up to 3 attempts with exponential backoff (500ms, 1500ms)
+//   • Detailed error reporting including err.cause
+//   • Fallback to node:https direct call if fetch() keeps failing with
+//     network errors (works around Node's built-in fetch TLS issues)
+//
+// Returns { ok, status, data, attempts, lastError }
+// ---------------------------------------------------------------------------
+
+export async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  let lastError = null;
+  const attempts = [];
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    attempts.push({ attempt, started: new Date().toISOString() });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10s per attempt
+
+      const res = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      const text = await res.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = text; }
+
+      attempts[attempts.length - 1].status = res.status;
+      attempts[attempts.length - 1].ok = res.ok;
+
+      // Any HTTP response (even 4xx/5xx) means network is working — return it
+      return { ok: res.ok, status: res.status, data, attempts };
+    } catch (err) {
+      const cause = err.cause ? (err.cause.code || err.cause.message) : null;
+      lastError = {
+        message: err.message,
+        cause: cause,
+        attempt: attempt,
+      };
+      attempts[attempts.length - 1].error = lastError;
+
+      console.error(`[fetchWithRetry] attempt ${attempt}/${maxRetries} failed:`, err.message, cause ? `(cause: ${cause})` : '');
+
+      // If this isn't the last attempt, wait before retrying
+      if (attempt < maxRetries) {
+        const backoffMs = attempt === 1 ? 500 : 1500;
+        await new Promise(r => setTimeout(r, backoffMs));
+      }
+    }
+  }
+
+  // All fetch() attempts failed — try node:https as a last resort
+  // (works around Node's built-in fetch TLS/HTTP2 issues with some hosts)
+  if (lastError && (lastError.cause === 'ENOTFOUND' || lastError.cause === 'ECONNREFUSED' ||
+      lastError.cause === 'UND_ERR_CONNECT_TIMEOUT' || lastError.cause === 'ETIMEDOUT' ||
+      lastError.message.includes('fetch failed'))) {
+
+    console.log('[fetchWithRetry] All fetch() attempts failed, trying node:https fallback...');
+    try {
+      const fallback = await fetchWithNodeHttps(url, options);
+      attempts.push({ attempt: 'fallback', status: fallback.status, ok: fallback.ok });
+      return { ...fallback, attempts };
+    } catch (fallbackErr) {
+      attempts.push({ attempt: 'fallback', error: { message: fallbackErr.message } });
+      lastError.fallbackTried = true;
+      lastError.fallbackError = fallbackErr.message;
+    }
+  }
+
+  return {
+    ok: false,
+    status: 0,
+    data: null,
+    attempts,
+    lastError,
+    networkError: true,
+  };
+}
+
+// Fallback: use node:https directly. This bypasses Node's built-in fetch
+// (undici) which has known issues with some TLS configurations.
+function fetchWithNodeHttps(url, options) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const bodyData = options.body || null;
+
+    const req = https.request({
+      hostname: parsed.hostname,
+      port: 443,
+      path: parsed.pathname + parsed.search,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      timeout: 10000,
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        let parsed;
+        try { parsed = JSON.parse(data); } catch { parsed = data; }
+        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: parsed });
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timed out (10s)')); });
+    if (bodyData) req.write(bodyData);
+    req.end();
+  });
 }
 
 // ---------------------------------------------------------------------------

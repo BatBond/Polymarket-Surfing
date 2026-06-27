@@ -15,7 +15,7 @@
 // network call. A browser cannot bypass this; it lives on the server.
 // ---------------------------------------------------------------------------
 
-import { kalshiHeaders, getKalshiCreds, MIN_POSITION_USD, MAX_POSITION_USD, enforceCap } from './keys.js';
+import { kalshiHeaders, getKalshiCreds, MIN_POSITION_USD, MAX_POSITION_USD, enforceCap, fetchWithRetry } from './keys.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -72,30 +72,35 @@ export default async function handler(req, res) {
       ...kalshiHeaders(creds, 'POST', path),
     };
 
-    const r = await fetch('https://api.kalshi.com/trade-api/v2' + path, {
-      method: 'POST',
-      headers,
-      body,
-    });
+    const result = await fetchWithRetry(
+      'https://api.kalshi.com/trade-api/v2' + path,
+      { method: 'POST', headers, body }
+    );
 
-    const data = await r.json();
-    if (!r.ok) {
-      return res.status(r.status).json({ error: 'Kalshi rejected order', detail: data });
+    if (result.networkError) {
+      // All 3 retries + fallback failed
+      const cause = result.lastError ? result.lastError.cause : null;
+      return res.status(502).json({
+        error: 'Network error reaching Kalshi after 3 retries + node:https fallback',
+        cause: cause,
+        attempts: result.attempts,
+        hint: cause === 'ENOTFOUND' ?
+          'DNS resolution failed for api.kalshi.com after multiple attempts. This is unusual — try redeploying. If it persists, the Vercel region may have network issues reaching Kalshi.' :
+          cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' ?
+          'Connection timed out. Kalshi may be slow or blocking Vercel IPs.' :
+          'Check Vercel function logs. The node:https fallback was also tried.',
+      });
     }
-    return res.status(200).json({ ok: true, platform: 'kalshi', order: data });
+
+    if (!result.ok) {
+      return res.status(result.status).json({ error: 'Kalshi rejected order', detail: result.data });
+    }
+    return res.status(200).json({ ok: true, platform: 'kalshi', order: result.data, attempts: result.attempts.length });
   } catch (err) {
     console.error('[order]', err);
-    // Surface the actual cause — Node fetch's "fetch failed" is useless alone.
-    const cause = err.cause ? (err.cause.code || err.cause.message) : null;
     return res.status(502).json({
-      error: 'Network error reaching Kalshi',
+      error: 'Unexpected error in order handler',
       message: err.message,
-      cause: cause,
-      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com — Vercel network issue' :
-            cause === 'ECONNREFUSED' ? 'Kalshi refused connection' :
-            cause === 'CERT_HAS_EXPIRED' || cause === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ? 'SSL/TLS certificate issue' :
-            cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' ? 'Connection timeout — Kalshi may be slow or blocking Vercel IPs' :
-            'Check Vercel function logs for details',
     });
   }
 }

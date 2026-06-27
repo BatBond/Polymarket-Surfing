@@ -7,13 +7,11 @@
 // The `endpoint` query param is appended verbatim to
 // https://api.kalshi.com/trade-api/v2/
 //
-// Kalshi's /v2/markets endpoint requires authentication in practice (even
-// though some docs say it's public). We include the Kalshi RSA auth headers
-// if env vars are set. If they're not set, we still try unauthenticated —
-// Kalshi may return data for some endpoints without auth.
+// Kalshi's /v2/markets endpoint requires authentication in practice. We
+// include the Kalshi RSA auth headers if env vars are set.
 // ---------------------------------------------------------------------------
 
-import { kalshiHeaders, getKalshiCreds } from './keys.js';
+import { kalshiHeaders, getKalshiCreds, fetchWithRetry } from './keys.js';
 
 const BASE_URL = 'https://api.kalshi.com/trade-api/v2';
 
@@ -44,35 +42,33 @@ export default async function handler(req, res) {
     try {
       Object.assign(headers, kalshiHeaders(creds, 'GET', path));
     } catch (e) {
-      // Signing failed (bad PEM?) — continue without auth so user sees
-      // Kalshi's 401 response and can debug
       console.error('[proxy] signing failed:', e.message);
     }
   }
 
-  try {
-    const response = await fetch(url, { headers });
-    const text = await response.text();
-    let data;
-    try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  const result = await fetchWithRetry(url, { headers });
 
-    res.setHeader('Cache-Control', 's-maxage=10');
-    return res.status(response.ok ? 200 : response.status).json({
-      ok: response.ok,
-      status: response.status,
+  if (result.networkError) {
+    const cause = result.lastError ? result.lastError.cause : null;
+    return res.status(502).json({
+      error: 'Network error reaching Kalshi',
+      cause: cause,
+      attempts: result.attempts,
+      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed. Try redeploying.' : 'Check Vercel function logs.',
+      ok: false,
+      status: 0,
       endpoint: endpoint,
       auth_used: !!(creds.keyId && creds.privateKeyPem),
-      data: data,
-    });
-  } catch (error) {
-    // Surface the actual cause (DNS, timeout, SSL, etc.) — Node's fetch
-    // otherwise just says "fetch failed" which is useless.
-    const cause = error.cause ? (error.cause.code || error.cause.message) : null;
-    return res.status(502).json({
-      error: 'Upstream request failed',
-      message: error.message,
-      cause: cause,
-      url: url,
+      data: null,
     });
   }
+
+  res.setHeader('Cache-Control', 's-maxage=10');
+  return res.status(result.ok ? 200 : result.status).json({
+    ok: result.ok,
+    status: result.status,
+    endpoint: endpoint,
+    auth_used: !!(creds.keyId && creds.privateKeyPem),
+    data: result.data,
+  });
 }
