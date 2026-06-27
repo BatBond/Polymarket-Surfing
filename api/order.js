@@ -29,8 +29,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: market, side, price, size' });
   }
 
-  // --- $30-50 guardrail (server-side, unbypassable) -----------------------
-  const cap = enforceCap(price, size);
+  // Kalshi requires integer cents (1-99). Floor the price before any check
+  // or submission. This also prevents decimal-price exploits from the browser.
+  const intPrice = Math.floor(Number(price));
+  const intSize = Math.floor(Number(size));
+  if (!isFinite(intPrice) || !isFinite(intSize) || intPrice < 1 || intPrice > 99 || intSize < 1) {
+    return res.status(400).json({ error: 'price must be 1-99 (integer cents), size must be ≥ 1 (integer contracts)' });
+  }
+
+  // --- $30-40 guardrail (server-side, unbypassable) -----------------------
+  const cap = enforceCap(intPrice, intSize);
   if (!cap.ok) {
     return res.status(400).json({ error: cap.error, notional: cap.notional, min: MIN_POSITION_USD, max: MAX_POSITION_USD });
   }
@@ -54,8 +62,8 @@ export default async function handler(req, res) {
     side: kalshiSide,
     action: 'buy',
     type: 'limit',
-    price: Number(price),            // cents (1..99)
-    count: Math.floor(Number(size)), // integer contracts
+    price: intPrice,        // integer cents (1-99)
+    count: intSize,         // integer contracts
   });
 
   try {

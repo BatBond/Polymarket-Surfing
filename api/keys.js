@@ -64,7 +64,10 @@ export function enforceCap(price, size) {
   if (!isFinite(p) || !isFinite(s) || p <= 0 || s <= 0) {
     return { ok: false, error: 'Invalid price or size', notional: NaN };
   }
-  const notional = p * s;
+  // Kalshi prices are in CENTS (1-99), size is in CONTRACTS (positive integer).
+  // Each contract at price P cents costs P/100 dollars.
+  // Therefore: dollar notional = (price_cents * contracts) / 100
+  const notional = (p * s) / 100;
   if (notional < MIN_POSITION_USD) {
     return {
       ok: false,

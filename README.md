@@ -37,6 +37,27 @@ Every stage is visible in the **AI Brain** tab — you can watch each cycle happ
 
 The browser **cannot** bypass the $30–40 server-side cap — even if someone edits the client JavaScript, the server rejects any order outside that range with HTTP 400.
 
+### Notional formula (IMPORTANT)
+
+Kalshi prices are in **cents** (1–99) and size is in **contracts** (positive integer). Each contract at price P cents costs P/100 dollars. So:
+
+```
+dollar_notional = (price_cents × contracts) / 100
+```
+
+Examples (all in $30–40 range):
+- price=35c, size=100 → $35.00 ✓
+- price=30c, size=100 → $30.00 ✓
+- price=40c, size=100 → $40.00 ✓
+- price=50c, size=70 → $35.00 ✓
+- price=70c, size=50 → $35.00 ✓
+
+**Bug fixed in v8.1**: The server previously computed `notional = price × size` without dividing by 100. This caused every order to be rejected as "exceeds $40" — e.g. a $35 order (price=35, size=100) was incorrectly computed as $3500 and rejected. The dashboard's brain and manual form both used the correct `/100` formula, so the bug only manifested as false rejections. **No money was lost** — the safety net caught its own math error. The fix is `(p × s) / 100`.
+
+### Integer enforcement
+
+Kalshi requires integer cents and integer contracts. The server floors both values with `Math.floor()` before the cap check and before submission, so the browser cannot send decimal values to bypass the cap. The dashboard also enforces `step="1"` on the price and size inputs.
+
 ---
 
 ## Why only 1 concurrent position?
@@ -213,7 +234,8 @@ curl -X POST https://your-app.vercel.app/api/order \
 | Brain runs but never TRADES, only HOLD/SKIP | Signals not strong enough, or risk gates failing | Check the Decision Log — it tells you exactly which gate failed. Lower `Min Confidence` in Config tab if needed. |
 | Brain logs SKIP "Risk gates failed: Budget" | Cash available < $30 | You already have a position open (max 1 concurrent). Wait for it to close, or increase investment cap. |
 | Brain logs SKIP "Risk gates failed: Cap" | Computed notional can't fit in $30–40 at current price | Market price is too extreme (very high or very low). Brain will retry next cycle with different markets. |
-| LIVE order returns 400 "below $30 minimum" / "exceeds $40 hard cap" | Server-side guardrail | Adjust price or size in the Manual Order form until notional preview turns green. |
+| LIVE order returns 400 "below $30 minimum" / "exceeds $40 hard cap" | Server-side guardrail | Adjust price or size in the Manual Order form until notional preview turns green. Note: server floors decimal prices to integer cents before checking. |
+| LIVE order rejected but dashboard said it was in $30–40 | Fixed in v8.1 — server now divides notional by 100 (was treating cents × contracts as dollars) | Redeploy with the latest code. This bug caused false "exceeds $40" rejections on every order. No money was lost. |
 | LIVE order returns 401 "Invalid signature" | Private key doesn't match public key on Kalshi | Regenerate keypair, re-upload public key to Kalshi, update env var. |
 | LIVE order returns 4xx with `detail` from Kalshi | Insufficient funds, invalid ticker, market closed | Read the `detail` field — Kalshi explains the rejection. |
 | Brain in LIVE mode shows `[BRAIN-LIVE FAIL]` repeatedly | Same causes as above | Check the System Log — each failure has the reason. |

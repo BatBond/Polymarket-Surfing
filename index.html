@@ -256,8 +256,8 @@ Composite signal = weighted sum. If signal > threshold AND confidence ≥ min, t
 <div class="space-y-3">
 <div><p class="lbl">Market Ticker</p><input type="text" class="inp" id="ex-market" placeholder="e.g. KXBTC-26DEC31-B500000"></div>
 <div><p class="lbl">Side</p><div class="toggle" id="ex-side-tog"><button class="toggle-btn on" data-v="yes">YES</button><button class="toggle-btn" data-v="no">NO</button></div></div>
-<div><p class="lbl">Price (cents, 1-99)</p><input type="number" class="inp" id="ex-price" value="50" min="1" max="99"></div>
-<div><p class="lbl">Size (contracts)</p><input type="number" class="inp" id="ex-size" value="70" min="1"></div>
+<div><p class="lbl">Price (cents, 1-99, integer only)</p><input type="number" class="inp" id="ex-price" value="50" min="1" max="99" step="1"></div>
+<div><p class="lbl">Size (contracts, integer)</p><input type="number" class="inp" id="ex-size" value="70" min="1" step="1"></div>
 <div class="p-2 rounded" style="background:var(--surface)">
 <p class="lbl" style="margin:0">Order Notional</p>
 <p class="mono text-sm font-bold" id="ex-notional">$0.00</p>
@@ -381,24 +381,28 @@ function brainResearch(){
   return fetch('/api/proxy?endpoint='+encodeURIComponent('markets?status=open&limit=50'))
     .then(function(r){return r.json()})
     .then(function(d){
+      // Kalshi's yes_bid / yes_ask are INTEGER CENTS (1-99). Skip markets
+      // that don't have at least one of them — we cannot price those safely.
       var markets=(d.markets||[]).map(function(m){
         var yesAsk=m.yes_ask?Math.round(m.yes_ask):null;
         var yesBid=m.yes_bid?Math.round(m.yes_bid):null;
-        var price=yesAsk||yesBid||Math.round((m.last_price||50)*100)||50;
+        // Use ask (what we'd pay to buy YES). Fall back to bid only if ask missing.
+        var price=yesAsk||yesBid;
+        if(!price||price<1||price>99)return null; // skip unpriceable markets
         return {
           id:m.ticker, q:m.title||m.subtitle||m.ticker, cat:m.category||'other',
           price:price, yesBid:yesBid, yesAsk:yesAsk,
           vol:parseInt(m.volume||0), liq:parseInt(m.open_interest||0)
         };
-      }).filter(function(m){return m.vol>0}); // only trade liquid markets
+      }).filter(function(m){return m!==null && m.vol>0}); // only liquid + priceable markets
       if(!markets.length){
-        addLog('[BRAIN] No live markets returned — using fallback list','research');
+        addLog('[BRAIN] No priceable live markets — using fallback list','research');
         markets=FALLBACK_MARKETS.map(function(m){return{id:m.id,q:m.q,cat:m.cat,price:m.base,yesBid:m.base-1,yesAsk:m.base+1,vol:m.vol,liq:Math.floor(m.vol/10)}});
       }
       brain.markets=markets;
       brain.scanCount++;
       brain.lastScan=new Date();
-      addLog('[BRAIN] Research complete: '+markets.length+' liquid markets found','research');
+      addLog('[BRAIN] Research complete: '+markets.length+' priceable markets found','research');
       return markets;
     })
     .catch(function(e){
@@ -583,11 +587,22 @@ function brainExecute(candidate){
   if(!candidate){setPipelineStage('idle');return}
 
   var side=candidate.action==='BUY YES'?'yes':'no';
-  var price=candidate.price;
-  var size=candidate.contracts;
+  // CRITICAL: floor price to integer cents — Kalshi rejects decimals,
+  // and the server's cap check assumes integer cents.
+  var price=Math.floor(candidate.price);
+  var size=Math.floor(candidate.contracts);
+
+  // Re-verify the cap locally with the floored values
+  var notional=price*size/100;
+  if(notional<30||notional>40){
+    addLog('[BRAIN-SKIP] Floored notional $'+notional.toFixed(2)+' outside $30-40 after integer rounding','risk');
+    setPipelineStage('idle');
+    return;
+  }
+  candidate.notional=notional;
 
   if(brain.mode==='live'){
-    addLog('[BRAIN-LIVE] Submitting '+side.toUpperCase()+' '+size+'x '+candidate.marketId+' @ '+price+'c ($'+candidate.notional.toFixed(2)+')','live');
+    addLog('[BRAIN-LIVE] Submitting '+side.toUpperCase()+' '+size+'x '+candidate.marketId+' @ '+price+'c ($'+notional.toFixed(2)+')','live');
     fetch('/api/order',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -839,13 +854,21 @@ function submitManualOrder(){
   var market=document.getElementById('ex-market').value.trim();
   var sideEl=document.querySelector('#ex-side-tog .toggle-btn.on');
   var side=sideEl?sideEl.dataset.v:'yes';
-  var price=parseFloat(document.getElementById('ex-price').value);
-  var size=parseInt(document.getElementById('ex-size').value);
+  // CRITICAL: floor to integer cents and integer contracts — Kalshi rejects decimals.
+  var price=Math.floor(parseFloat(document.getElementById('ex-price').value)||0);
+  var size=Math.floor(parseInt(document.getElementById('ex-size').value)||0);
+  // Reflect floored values back into the inputs so the user sees what we'll send
+  document.getElementById('ex-price').value=price;
+  document.getElementById('ex-size').value=size;
+
   if(!market){showToast('Enter a market ticker','error');return}
-  if(!price||price<1||price>99){showToast('Price must be 1-99 cents','error');return}
+  if(!price||price<1||price>99){showToast('Price must be integer 1-99 cents','error');return}
   if(!size||size<1){showToast('Size must be at least 1 contract','error');return}
   var notional=price*size/100;
-  if(notional<30||notional>40){showToast('Notional $'+notional.toFixed(2)+' outside $30-40 range','error');return}
+  if(notional<30||notional>40){
+    showToast('Notional $'+notional.toFixed(2)+' outside $30-40 range','error');
+    return;
+  }
   addLog('[MANUAL] Submitting '+side.toUpperCase()+' '+size+'x '+market+' @ '+price+'c ($'+notional.toFixed(2)+')','live');
   var btn=document.getElementById('ex-exec-btn');
   btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
