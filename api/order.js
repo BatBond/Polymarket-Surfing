@@ -85,6 +85,17 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, platform: 'kalshi', order: data });
   } catch (err) {
     console.error('[order]', err);
-    return res.status(502).json({ error: err.message || 'Order failed' });
+    // Surface the actual cause — Node fetch's "fetch failed" is useless alone.
+    const cause = err.cause ? (err.cause.code || err.cause.message) : null;
+    return res.status(502).json({
+      error: 'Network error reaching Kalshi',
+      message: err.message,
+      cause: cause,
+      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com — Vercel network issue' :
+            cause === 'ECONNREFUSED' ? 'Kalshi refused connection' :
+            cause === 'CERT_HAS_EXPIRED' || cause === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ? 'SSL/TLS certificate issue' :
+            cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' ? 'Connection timeout — Kalshi may be slow or blocking Vercel IPs' :
+            'Check Vercel function logs for details',
+    });
   }
 }

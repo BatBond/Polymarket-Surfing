@@ -35,10 +35,30 @@ export function kalshiHeaders({ keyId, privateKeyPem }, method, path) {
 }
 
 export function getKalshiCreds() {
+  let privateKeyPem = process.env.KALSHI_PRIVATE_KEY_PEM || '';
+  // Vercel (and most env var UIs) often strip literal newlines from multi-line
+  // PEM values. If the PEM contains the literal sequence "\n", replace it with
+  // an actual newline so crypto.createSign().sign() can parse it.
+  if (privateKeyPem.includes('\\n')) {
+    privateKeyPem = privateKeyPem.replace(/\\n/g, '\n');
+  }
+  // Some UIs also strip the leading/trailing newlines around the BEGIN/END markers
+  if (!privateKeyPem.startsWith('-----BEGIN')) {
+    const m = privateKeyPem.match(/-----BEGIN[A-Z ]*PRIVATE KEY-----[\s\S]*-----END[A-Z ]*PRIVATE KEY-----/);
+    if (m) privateKeyPem = m[0];
+  }
   return {
     keyId: process.env.KALSHI_KEY_ID,
-    privateKeyPem: process.env.KALSHI_PRIVATE_KEY_PEM,
+    privateKeyPem: privateKeyPem || undefined,
   };
+}
+
+// Sanity check used by /api/health — returns true if creds look complete
+// (without actually trying to use them). Does NOT verify the key matches Kalshi.
+export function hasKalshiCreds() {
+  const c = getKalshiCreds();
+  return !!(c.keyId && c.privateKeyPem &&
+    c.privateKeyPem.includes('BEGIN') && c.privateKeyPem.includes('END'));
 }
 
 // ---------------------------------------------------------------------------

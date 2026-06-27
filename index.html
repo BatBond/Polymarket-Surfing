@@ -141,15 +141,18 @@ table.dt tr:hover td{background:var(--card2)}
 <div><p class="lbl">Investment Cap ($)</p><input type="number" class="inp" id="cfg-invest" value="50" min="50" max="500"></div>
 <div><p class="lbl">Per-Order Cap ($)</p><input type="number" class="inp" id="cfg-maxpos" value="35" min="30" max="40" readonly style="opacity:.7"></div>
 <div><p class="lbl">Max Concurrent</p><input type="number" class="inp" id="cfg-concurrent" value="1" min="1" max="1" readonly style="opacity:.7"></div>
-<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan"><option value="15">15s</option><option value="30" selected>30s</option><option value="60">60s</option></select></div>
+<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan"><option value="15" selected>15s</option><option value="30">30s</option><option value="60">60s</option></select></div>
 <div><p class="lbl">Stop Loss (%)</p><input type="number" class="inp" id="cfg-sl" value="15"></div>
 <div><p class="lbl">Take Profit (%)</p><input type="number" class="inp" id="cfg-tp" value="30"></div>
 <div><p class="lbl">Min Confidence to Trade</p><select class="inp" id="cfg-minconf"><option value="50">50%</option><option value="60" selected>60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
 <button class="btn btn-accent w-full justify-center" id="start-btn"><i class="fas fa-play"></i> Start AI Brain</button>
 <button class="btn btn-danger w-full justify-center" id="stop-btn" disabled><i class="fas fa-stop"></i> Stop AI Brain</button>
+<button class="btn btn-ghost w-full justify-center" id="cycle-now-btn" disabled><i class="fas fa-forward"></i> Run Cycle Now</button>
+<button class="btn btn-ghost w-full justify-center" id="health-btn"><i class="fas fa-stethoscope"></i> Test Connection</button>
 <div class="p-2 rounded" style="background:var(--surface);border-left:2px solid var(--gold)">
 <p class="lbl" style="color:var(--gold)">BRAIN PIPELINE</p>
 <p class="text-[9px]" style="color:var(--dim);line-height:1.5">Every scan cycle: <b>Research</b> → <b>Score</b> → <b>Risk Check</b> → <b>Decide</b> → <b>Execute</b></p>
+<p class="text-[9px] mt-1" style="color:var(--muted)" id="last-cycle-info">No cycles run yet</p>
 </div>
 </div>
 <div class="space-y-3">
@@ -193,7 +196,7 @@ table.dt tr:hover td{background:var(--card2)}
 <div><p class="lbl">Investment Cap ($)</p><input type="number" class="inp" id="cfg-invest2" value="50" min="50" max="500"></div>
 <div><p class="lbl">Per-Order Target ($)</p><input type="number" class="inp" id="cfg-target" value="35" min="30" max="40"></div>
 <div><p class="lbl">Max Concurrent Positions</p><input type="number" class="inp" id="cfg-concurrent2" value="1" min="1" max="1" readonly style="opacity:.7"></div>
-<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan2"><option value="15">15s</option><option value="30" selected>30s</option><option value="60">60s</option></select></div>
+<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan2"><option value="15" selected>15s</option><option value="30">30s</option><option value="60">60s</option></select></div>
 <div><p class="lbl">Stop Loss (%)</p><input type="number" class="inp" id="cfg-sl2" value="15"></div>
 <div><p class="lbl">Take Profit (%)</p><input type="number" class="inp" id="cfg-tp2" value="30"></div>
 <div><p class="lbl">Min Confidence to Trade</p><select class="inp" id="cfg-minconf2"><option value="50">50%</option><option value="60" selected>60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
@@ -381,9 +384,12 @@ function brainResearch(){
   return fetch('/api/proxy?endpoint='+encodeURIComponent('markets?status=open&limit=50'))
     .then(function(r){return r.json()})
     .then(function(d){
+      // Proxy now wraps response in { ok, status, endpoint, auth_used, data }
+      // Extract the actual Kalshi payload from d.data
+      var kalshiData = d.data || d;
       // Kalshi's yes_bid / yes_ask are INTEGER CENTS (1-99). Skip markets
       // that don't have at least one of them — we cannot price those safely.
-      var markets=(d.markets||[]).map(function(m){
+      var markets=(kalshiData.markets||[]).map(function(m){
         var yesAsk=m.yes_ask?Math.round(m.yes_ask):null;
         var yesBid=m.yes_bid?Math.round(m.yes_bid):null;
         // Use ask (what we'd pay to buy YES). Fall back to bid only if ask missing.
@@ -396,13 +402,14 @@ function brainResearch(){
         };
       }).filter(function(m){return m!==null && m.vol>0}); // only liquid + priceable markets
       if(!markets.length){
-        addLog('[BRAIN] No priceable live markets — using fallback list','research');
+        addLog('[BRAIN] No priceable live markets. Proxy auth_used='+d.auth_used+', status='+d.status+'. Using fallback list.','research');
         markets=FALLBACK_MARKETS.map(function(m){return{id:m.id,q:m.q,cat:m.cat,price:m.base,yesBid:m.base-1,yesAsk:m.base+1,vol:m.vol,liq:Math.floor(m.vol/10)}});
+      } else {
+        addLog('[BRAIN] Research complete: '+markets.length+' priceable markets (auth_used='+d.auth_used+')','research');
       }
       brain.markets=markets;
       brain.scanCount++;
       brain.lastScan=new Date();
-      addLog('[BRAIN] Research complete: '+markets.length+' priceable markets found','research');
       return markets;
     })
     .catch(function(e){
@@ -627,15 +634,18 @@ function brainExecute(candidate){
           showToast('AI Brain LIVE order filled: '+candidate.marketId,'success');
           renderPositions(); updateStats();
         } else {
-          addLog('[BRAIN-LIVE FAIL] '+(d.error||JSON.stringify(d.detail||'')),'risk');
-          showToast('AI Brain order rejected: '+(d.error||'see log'),'error');
+          var errMsg=d.error||JSON.stringify(d.detail||'');
+          if(d.cause)errMsg+=' (cause: '+d.cause+')';
+          if(d.hint)errMsg+=' — '+d.hint;
+          addLog('[BRAIN-LIVE FAIL] '+errMsg,'risk');
+          showToast('AI Brain order rejected: '+(d.error||'see log')+(d.hint?' — '+d.hint:''),'error');
         }
         setPipelineStage('done');
         setTimeout(function(){if(brain.running)setPipelineStage('idle')},2000);
       })
       .catch(function(e){
         addLog('[BRAIN-LIVE ERR] '+e.message,'risk');
-        showToast('AI Brain network error: '+e.message,'error');
+        showToast('AI Brain network error: '+e.message+' — click Test Connection to diagnose','error');
         setPipelineStage('idle');
       });
   } else {
@@ -912,8 +922,19 @@ function fetchKalshiMarkets(){
   fetch('/api/proxy?endpoint='+encodeURIComponent('markets?status=open&limit=50'))
     .then(function(r){return r.json()})
     .then(function(d){
-      var markets=d.markets||[];
-      if(!markets.length){b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">No markets returned.</td></tr>';return}
+      // Proxy wraps response in { ok, status, endpoint, auth_used, data }
+      var kalshiData = d.data || d;
+      var markets=kalshiData.markets||[];
+      if(!markets.length){
+        var msg='No markets returned.';
+        if(d.auth_used===false)msg+=' Kalshi markets endpoint needs auth — set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM in Vercel env vars.';
+        else if(d.cause)msg+=' Network error: '+d.cause;
+        else if(d.status)msg+=' HTTP '+d.status;
+        else if(kalshiData.error)msg+=' '+(kalshiData.error.message||kalshiData.error);
+        b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">'+msg+'<br><br><button class="btn btn-ghost btn-sm" onclick="runHealthCheck()"><i class="fas fa-stethoscope"></i> Run Connection Test</button></td></tr>';
+        addLog('Market fetch: '+msg,'risk');
+        return;
+      }
       b.innerHTML='';
       for(var i=0;i<markets.length;i++){
         var mk=markets[i];
@@ -925,10 +946,11 @@ function fetchKalshiMarkets(){
         tr.querySelector('button').addEventListener('click',function(t){return function(){document.getElementById('ex-market').value=t;switchTab('manual');showToast('Loaded '+t+' into order form','info')}}(mk.ticker));
         b.appendChild(tr);
       }
-      addLog('Fetched '+markets.length+' live Kalshi markets','system');
+      addLog('Fetched '+markets.length+' live Kalshi markets (auth_used='+d.auth_used+')','system');
     })
     .catch(function(e){
-      b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">Error: '+e.message+'</td></tr>';
+      b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">Error: '+e.message+'<br><br><button class="btn btn-ghost btn-sm" onclick="runHealthCheck()"><i class="fas fa-stethoscope"></i> Run Connection Test</button></td></tr>';
+      addLog('Market fetch error: '+e.message,'risk');
     });
 }
 
@@ -938,8 +960,11 @@ function fetchKalshiBalance(){
     .then(function(r){return r.json()})
     .then(function(d){
       if(d.error){
-        addLog('Balance fetch failed: '+d.error,'risk');
-        showToast('Balance: '+d.error,'error');
+        var msg=d.error;
+        if(d.hint)msg+='\n→ '+d.hint;
+        if(d.cause)msg+='\n→ Cause: '+d.cause;
+        addLog('Balance fetch failed: '+msg.replace(/\n/g,' '),'risk');
+        showToast('Balance: '+(d.error||'see log'),'error');
         return;
       }
       var bal=d.balance;
@@ -958,6 +983,7 @@ function fetchKalshiBalance(){
         updateStats(); drawCharts();
       } else {
         addLog('Balance loaded but appears empty — fund your Kalshi account','system');
+        showToast('Kalshi account balance is $0','info');
       }
       if(d.positions&&Array.isArray(d.positions.positions)){
         var kp=d.positions.positions;
@@ -971,6 +997,58 @@ function fetchKalshiBalance(){
     .catch(function(e){
       addLog('Balance fetch error: '+e.message,'risk');
       showToast('Balance error: '+e.message,'error');
+    });
+}
+
+// ===========================================================================
+// Health check — tests proxy + auth + balance and reports detailed status
+// ===========================================================================
+function runHealthCheck(){
+  addLog('[HEALTH] Running connection test...','system');
+  showToast('Running connection test...','info');
+  // Show results in a modal-like overlay
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML='<div class="card" style="max-width:600px;width:100%;padding:20px;max-height:80vh;overflow-y:auto">'+
+    '<div class="flex justify-between mb-3"><h3 class="text-[12px] font-bold tracking-wider" style="color:var(--accent)">CONNECTION TEST</h3>'+
+    '<button class="btn btn-ghost btn-sm" id="health-close"><i class="fas fa-times"></i></button></div>'+
+    '<div id="health-content" style="font-size:10px"><i class="fas fa-spinner fa-spin"></i> Testing...</div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#health-close').addEventListener('click',function(){overlay.remove()});
+
+  fetch('/api/health')
+    .then(function(r){return r.json()})
+    .then(function(report){
+      var html='<div class="space-y-2">';
+      var overallColor=report.overall==='ok'?'var(--accent)':'var(--danger)';
+      html+='<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid '+overallColor+'">'+
+        '<b style="color:'+overallColor+'">Overall: '+(report.overall==='ok'?'HEALTHY':'FAILING')+'</b><br>'+
+        '<span style="color:var(--muted)">'+report.timestamp+'</span></div>';
+      for(var i=0;i<report.steps.length;i++){
+        var s=report.steps[i];
+        var color=s.pass?'var(--accent)':'var(--danger)';
+        var icon=s.pass?'check-circle':'times-circle';
+        html+='<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid '+color+'">'+
+          '<i class="fas fa-'+icon+'" style="color:'+color+';margin-right:6px"></i>'+
+          '<b>'+s.name+':</b> '+(s.pass?'PASS':'FAIL')+'<br>'+
+          '<span style="color:var(--dim)">'+(s.detail||'')+'</span>';
+        if(s.hint)html+='<br><span style="color:var(--gold)"><b>Fix:</b> '+s.hint+'</span>';
+        html+='</div>';
+      }
+      html+='</div>';
+      html+='<div class="mt-3 p-2 rounded" style="background:var(--gold-bg);border-left:2px solid var(--gold)">'+
+        '<b style="color:var(--gold)">Next steps:</b><br>'+
+        '<span style="color:var(--dim)">'+
+        (report.overall==='ok'?
+          'Everything works. Start the AI Brain in LIVE mode to begin trading.':
+          'Fix the failing steps above, then click "Test Connection" again. After fixing env vars in Vercel, you MUST redeploy for changes to take effect.')+
+        '</span></div>';
+      document.getElementById('health-content').innerHTML=html;
+      addLog('[HEALTH] Result: '+report.overall.toUpperCase()+' ('+report.steps.filter(function(s){return s.pass}).length+'/'+report.steps.length+' steps passed)',report.overall==='ok'?'system':'risk');
+    })
+    .catch(function(e){
+      document.getElementById('health-content').innerHTML='<div style="color:var(--danger)">Failed to run health check: '+e.message+'<br><br>The /api/health endpoint may not be deployed. Redeploy the latest code.</div>';
+      addLog('[HEALTH] Failed to run: '+e.message,'risk');
     });
 }
 
@@ -1007,6 +1085,7 @@ function switchTab(name){var tabs=document.querySelectorAll('.tab-btn');var cont
 function updateBotUI(running){
   document.getElementById('start-btn').disabled=running;
   document.getElementById('stop-btn').disabled=!running;
+  document.getElementById('cycle-now-btn').disabled=!running;
   var dot=document.getElementById('header-dot');
   var badge=document.getElementById('status-badge');
   if(running){
@@ -1016,6 +1095,23 @@ function updateBotUI(running){
     dot.style.background='var(--danger)';dot.style.boxShadow='0 0 6px var(--danger)';
     badge.className='badge badge-red';badge.innerHTML='<i class="fas fa-circle text-[5px]"></i> OFFLINE';
     setPipelineStage('idle');
+  }
+}
+
+// Update the "last cycle ran Xs ago" indicator every second
+function updateLastCycleInfo(){
+  var el=document.getElementById('last-cycle-info');
+  if(!el)return;
+  if(!brain.lastScan){
+    el.textContent='No cycles run yet';
+    return;
+  }
+  var secsAgo=Math.floor((Date.now()-brain.lastScan.getTime())/1000);
+  if(brain.running){
+    var nextIn=Math.max(0,Math.floor(brain.cfg.scanMs/1000)-secsAgo);
+    el.textContent='Last cycle: '+secsAgo+'s ago · Next in '+nextIn+'s · Total scans: '+brain.scanCount;
+  } else {
+    el.textContent='Last cycle: '+secsAgo+'s ago · Total scans: '+brain.scanCount;
   }
 }
 function updateModeText(){
@@ -1072,6 +1168,8 @@ document.addEventListener('DOMContentLoaded',function(){
   renderExecQueue();
   renderCandidates();
   renderDecisions();
+  // Start the "last cycle Xs ago" ticker
+  setInterval(updateLastCycleInfo,1000);
 
   // Tab switching
   var tabs=document.querySelectorAll('.tab-btn');
@@ -1145,6 +1243,13 @@ document.addEventListener('DOMContentLoaded',function(){
     showToast('AI Brain stopped','info');
     updateBotUI(false);
   });
+  document.getElementById('cycle-now-btn').addEventListener('click',function(){
+    if(brain.running){
+      addLog('[BRAIN] Manual cycle triggered','system');
+      brainCycle();
+    }
+  });
+  document.getElementById('health-btn').addEventListener('click',runHealthCheck);
   document.getElementById('close-all-btn').addEventListener('click',function(){
     var copy=[].concat(brain.positions).filter(function(p){return p.source==='paper'});
     copy.forEach(function(p){closePos(p.id,'close-all')});
