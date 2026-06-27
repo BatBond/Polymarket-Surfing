@@ -46,14 +46,17 @@ export function getKalshiCreds() {
 // call. Server-side constants, so the browser cannot bypass them.
 //
 // MIN_POSITION_USD = 30   -> reject dust / test orders below this
-// MAX_POSITION_USD = 50   -> reject any order above this
+// MAX_POSITION_USD = 40   -> reject any order above this
+//
+// With a $50 total investment, this means at most ONE open position at a
+// time (2 × $30 = $60 > $50). The dashboard enforces max_concurrent=1.
 //
 // To change the range, edit these two numbers and redeploy. Do NOT expose
 // them as env vars — that would let the browser override them.
 // ---------------------------------------------------------------------------
 
 export const MIN_POSITION_USD = 30;
-export const MAX_POSITION_USD = 50;
+export const MAX_POSITION_USD = 40;
 
 export function enforceCap(price, size) {
   const p = Number(price);

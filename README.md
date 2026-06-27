@@ -1,135 +1,178 @@
-# Kalshi Surfing — FABLE ELITE v7.0
+# Kalshi AI Brain — FABLE ELITE v8.0
 
-Quantitative trading dashboard for **Kalshi** (CFTC-registered, US-legal). Polymarket has been removed entirely — this build is Kalshi-only.
-
----
-
-## ⚠️ Read this first — why your trades weren't showing up on Kalshi
-
-If you ran the previous version, pressed "Start Bot", and saw trades appear in the dashboard but **nothing showed up in your Kalshi account**, the reason is:
-
-1. **The previous bot was in PAPER mode by default** — it simulated trades locally in your browser's memory and never made any network call to Kalshi. The "trades" you saw were animations.
-2. **Even in LIVE mode, the previous version never called `/api/order`** — the bot's trade loop only updated local state. It was a UI demo, not a real trading client.
-3. **Your Kalshi API keys were probably not set** — without `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` in Vercel env vars, the `/api/order` route returns a 500 error before any order can be placed.
-
-**This version fixes all three:**
-- The bot now actually calls `POST /api/order` when in LIVE mode
-- The "Manual Order" tab has a **Submit to Kalshi** button that fires a real order immediately
-- The dashboard fetches your real Kalshi balance on page load (and shows a clear error if keys are missing)
+Autonomous AI trading brain for **Kalshi** (CFTC-registered, US-legal). The brain researches live markets, scores them on Bayesian edge + momentum + volume, runs explicit risk gates, and auto-executes orders within your $30–40 per-order cap and $50 total investment.
 
 ---
 
-## What's in this repo
+## What the AI Brain actually does
+
+Every scan cycle (default 30 seconds), the brain runs a 5-stage pipeline:
 
 ```
-.
-├── index.html           Dashboard UI (Kalshi-only, real order submission)
-├── package.json         No runtime deps — Vercel builds the API natively
-├── vercel.json          Tells Vercel: no framework, no build step
-├── .gitignore
-├── .env.example         Template for Kalshi API keys
-├── api/
-│   ├── proxy.js         Public Kalshi market data (no auth needed)
-│   ├── order.js         Authenticated order placement  ← $30-50 guardrail
-│   ├── balance.js       Authenticated balance + positions fetch
-│   └── keys.js          Kalshi RSA-SHA256 signing + cap enforcement
-└── README.md
+┌─────────────────────────────────────────────────────────────────┐
+│  1. RESEARCH  →  Fetch live Kalshi markets via /api/proxy       │
+│  2. SCORE     →  Compute Bayesian edge + momentum + volume      │
+│  3. RISK CHECK→  Budget / slots / drawdown / cap / confidence   │
+│  4. DECIDE    →  TRADE / HOLD / SKIP with reason                │
+│  5. EXECUTE   →  POST /api/order (LIVE) or log (PAPER)          │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+Every stage is visible in the **AI Brain** tab — you can watch each cycle happen in real time and audit every decision in the Decision Log.
+
+---
+
+## Risk guardrails (hard-coded, server-enforced)
+
+| Guardrail | Value | Enforced where |
+|---|---|---|
+| **Per-order minimum** | $30 | Server (`api/keys.js` → `MIN_POSITION_USD`) |
+| **Per-order maximum** | $40 | Server (`api/keys.js` → `MAX_POSITION_USD`) |
+| **Total investment cap** | $50 (configurable up to $500) | Client + server (cash budget check) |
+| **Max concurrent positions** | 1 (locked) | Client (with $50 cap, 2 × $30 = $60 > $50) |
+| **Stop loss** | 15% (configurable) | Client (paper positions only) |
+| **Take profit** | 30% (configurable) | Client (paper positions only) |
+| **Max drawdown** | 20% (hard-coded) | Client (brain pauses new trades) |
+| **Min confidence to trade** | 60% (configurable) | Client (brain skips low-confidence signals) |
+
+The browser **cannot** bypass the $30–40 server-side cap — even if someone edits the client JavaScript, the server rejects any order outside that range with HTTP 400.
+
+---
+
+## Why only 1 concurrent position?
+
+With a $50 investment cap and $30–40 per-order range, you can only safely hold one position at a time. Two $30 orders would require $60, exceeding your $50 budget. The dashboard locks `Max Concurrent` to 1.
+
+If you increase your investment cap (e.g. to $200), edit the `max` attribute on the `cfg-concurrent` input in `index.html` to allow more concurrent positions.
 
 ---
 
 ## Deploy to Vercel
 
 1. Push this folder to a GitHub repo.
-2. Import the repo at <https://vercel.com/new>.
-3. **Framework Preset** → *Other*.
-4. Leave **Build Command**, **Output Directory**, and **Install Command** empty.
-5. Click **Deploy**.
+2. Import at <https://vercel.com/new>.
+3. **Framework Preset** → *Other*. Leave Build/Output/Install empty.
+4. Click **Deploy**.
 
 No `npm install` is needed — the API routes use only Node's built-in `crypto` module.
 
 ---
 
-## Kalshi API key setup (required for real trading)
+## Kalshi API key setup (required for live trading)
 
-1. Create an account at <https://kalshi.com> and complete KYC (SSN + ID). Usually takes under an hour.
+1. Create an account at <https://kalshi.com> and complete KYC (SSN + ID).
 2. Generate an RSA keypair locally:
    ```bash
    openssl genrsa -out kalshi_private.pem 2048
    openssl rsa -in kalshi_private.pem -pubout -out kalshi_public.pem
    ```
-3. In your Kalshi dashboard, go to **Profile → API Keys → Add Key**, upload `kalshi_public.pem`, and copy the **Key ID** it returns.
-4. In your Vercel project, go to **Settings → Environment Variables** and add:
+3. In your Kalshi dashboard, go to **Profile → API Keys → Add Key**, upload `kalshi_public.pem`, copy the **Key ID**.
+4. In Vercel → **Settings → Environment Variables**, add for the **Production** environment:
    - `KALSHI_KEY_ID` — the Key ID from step 3
-   - `KALSHI_PRIVATE_KEY_PEM` — full contents of `kalshi_private.pem` (paste as one string, you can keep the `\n` newlines)
-5. **Redeploy** (Vercel → Deployments → click the menu on the latest → Redeploy). Env var changes do NOT apply to already-running deployments.
+   - `KALSHI_PRIVATE_KEY_PEM` — full contents of `kalshi_private.pem`
+5. **Redeploy** (env var changes do not apply to running deployments).
 
-**Funding Kalshi:** Bank transfer only (no crypto). The $30–50 cap is on per-order notional — your account balance is separate. Fund with however much you want; each order is still capped.
-
----
-
-## How to verify your keys are working
-
-After redeploying with the env vars set:
-
-1. Open your deployed dashboard.
-2. Look at the **System Log** (bottom right of the Manual Order tab, or any tab's log section).
-3. On page load, you should see one of:
-   - ✅ `Live Kalshi balance loaded on startup: $X.XX` — keys work, balance fetched
-   - ⚠️ `Kalshi API reachable but account balance is $0 — fund your account` — keys work, account empty
-   - ❌ `Kalshi API not configured. Set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM...` — env vars missing or wrong
-4. Click **"Fetch Live Kalshi Markets"** in the Markets tab — you should see real market tickers populate the table.
-
-If you see the ❌ message, your env vars are either not set, set on the wrong environment (Production vs Preview), or you didn't redeploy after setting them.
+Fund your Kalshi account via bank transfer (no crypto). With a $50 investment cap, fund at least $50.
 
 ---
 
-## How to actually place a real trade
+## How to use the AI Brain
 
-### Option A — Manual order (recommended for your first trade)
+### First run (PAPER mode — recommended)
 
-1. Open the **Markets** tab → click **Fetch Live Kalshi Markets**.
-2. Find a market you want to trade → click the **→** button on its row. This loads the ticker into the Manual Order form and switches you to that tab.
-3. Pick **YES** or **NO**, set the **Price** (in cents, 1–99), and the **Size** (number of contracts).
-4. The **Order Notional** preview updates live. It must land between **$30 and $50** — the box turns green when it's in range, red when it's not.
-5. Click **Submit to Kalshi**.
-6. Watch the **Execution Log** on the right:
-   - `ACCEPTED` → order went through, check your Kalshi dashboard to confirm
-   - `REJECTED: <reason>` → the server's guardrail blocked it OR Kalshi rejected it (insufficient funds, invalid ticker, market closed, etc.)
-7. Cross-check in your Kalshi account at <https://kalshi.com/portfolio> — the order should appear within a few seconds.
+1. Open the deployed dashboard. The AI Brain tab is the default.
+2. Leave mode as **PAPER**. Investment Cap defaults to **$50**.
+3. Click **Start AI Brain**.
+4. Watch the pipeline visualize each cycle:
+   - **RESEARCH** → fetches live Kalshi markets
+   - **SCORE** → ranks markets by composite signal
+   - **RISK CHECK** → shows each gate pass/fail with details
+   - **DECIDE** → logs TRADE / HOLD / SKIP with reason
+   - **EXECUTE** → in PAPER, logs the trade locally
+5. Check the **Decision Log** to see why the brain made each choice.
+6. Verify the brain's behavior is sane before going live.
 
-### Option B — Bot in LIVE mode
+### Going LIVE
 
-1. In the **Bot Control** tab, toggle from **PAPER** to **LIVE**. The mode banner at the top turns red and warns you.
-2. Click **Start Bot**.
-3. Every 4 seconds, if the bot's signal logic finds a trade opportunity, it will POST a real order to `/api/order`. Each order is bounded to $30–50 by the server.
-4. Live orders appear in the Positions tab with a gold **LIVE** badge and **SUBMITTED** status.
-5. Watch the System Log for `[LIVE OK]` (accepted) or `[LIVE FAIL]` (rejected) messages.
+1. Confirm your Kalshi keys are set (you should see "Live Kalshi balance loaded" in the System Log on page load).
+2. Toggle mode from PAPER to **LIVE**. The mode banner turns red.
+3. Click **Start AI Brain**.
+4. The brain now POSTs real orders to `/api/order` when all risk gates pass.
+5. Every LIVE order appears in the Positions tab with a gold **LIVE** + purple **AUTO** badge.
+6. Cross-check in your Kalshi portfolio at <https://kalshi.com/portfolio>.
 
-⚠️ **LIVE mode will spend real money.** Start in PAPER mode first to verify the bot's signal logic isn't doing anything crazy. When you switch to LIVE, monitor the first few orders closely.
+⚠️ **LIVE mode spends real money.** Watch the first few cycles closely.
+
+### Manual order (bypass the brain)
+
+If you want to place a specific order without waiting for the brain:
+1. Go to **Markets** tab → click **Fetch Live Kalshi Markets**.
+2. Click the **→** on a market row → loads ticker into Manual Order form.
+3. Set side, price, size. Notional preview turns green when in $30–40 range.
+4. Click **Submit to Kalshi**.
 
 ---
 
-## The $30–$50 per-order guardrail
+## How the brain scores markets
 
-Enforced in `api/keys.js` → `enforceCap(price, size)` and called at the top of `api/order.js`. The check runs **before** any network call, and the constants (`MIN_POSITION_USD = 30`, `MAX_POSITION_USD = 50`) live server-side — there are no env vars or query params to override them from the browser.
+For each liquid Kalshi market, the brain computes four signals:
 
-- Orders with notional `< $30` → rejected (prevents dust / test orders)
-- Orders with notional `> $50` → rejected (hard cap)
-- The dashboard's "Max Position ($)" input is clamped to `min=30 max=50` and defaults to `$30`
+| Signal | What it measures | Weight |
+|---|---|---|
+| **Momentum** | Recent price direction (5-snapshot return) | 40% |
+| **Mean reversion** | Distance from 20-period moving average | 30% |
+| **Bayesian edge** | Posterior probability vs market price (Beta-Binomial) | 30% |
+| **Volume score** | Normalized trading volume (0–1) | Confidence boost |
 
-To change the range, edit both constants in `api/keys.js` and redeploy.
+Composite signal = `momentum × 0.4 + mean_reversion × 0.3 + bayesian_edge × 0.3`.
+
+Confidence = `30 + |signal| × 200 + volume_score × 20 + history_length × 1.5`, clamped to [0, 95].
+
+**Action thresholds:**
+- `signal > 0.03` AND `confidence ≥ min` → **BUY YES**
+- `signal < -0.03` AND `confidence ≥ min` → **BUY NO**
+- `signal > 0.015` → LEAN YES (no trade)
+- `signal < -0.015` → LEAN NO (no trade)
+- Otherwise → HOLD
+
+Markets are ranked by `|signal| × confidence`. The top actionable candidate goes through risk gates.
 
 ---
 
-## Starting portfolio
+## Risk gates (all must pass to trade)
 
-The dashboard ships with **$0** starting balance. On page load, it tries to fetch your real Kalshi balance via `/api/balance`:
+The brain checks 7 gates before placing any order:
 
-- **If keys are set and account is funded** → the Portfolio stat card shows your real Kalshi USD balance.
-- **If keys are not set or fetch fails** → stays at $0, and the System Log explains what to fix.
-- **In PAPER mode** → paper trades adjust the local balance; live balance is shown for reference only.
-- **In LIVE mode** → real orders hit Kalshi; rebalance by clicking **Refresh Balance** to re-pull from the API.
+1. **Confidence** ≥ min threshold (default 60%)
+2. **Actionable signal** — must be BUY YES or BUY NO (not HOLD/LEAN)
+3. **Budget** — cash available ≥ $30
+4. **Slots** — open positions < max concurrent (1)
+5. **No duplicate** — not already holding this market
+6. **Drawdown** — current drawdown < 20%
+7. **Cap** — computed order notional lands in $30–40
+
+If any gate fails, the brain logs SKIP with the failed gate names and waits for the next cycle. Every gate's pass/fail is visible in the Risk Analysis panel.
+
+---
+
+## Order sizing math
+
+The brain targets $35 per order (middle of $30–40 range):
+
+```
+target_notional = $35
+contracts = floor(35 × 100 / price_cents)
+actual_notional = price_cents × contracts / 100
+```
+
+If `actual_notional` falls below $30, the brain bumps `contracts` up to `ceil(30 × 100 / price)`. If the bumped notional exceeds $40, the brain skips the trade (would violate cap).
+
+**Examples:**
+- Price 50c → 70 contracts → $35.00 ✓
+- Price 35c → 100 contracts → $35.00 ✓
+- Price 70c → 50 contracts → $35.00 ✓
+- Price 25c → 140 contracts → $35.00 ✓
+- Price 95c → 36 contracts → $34.20 ✓ (brain bumps to 37 → $35.15)
 
 ---
 
@@ -139,56 +182,60 @@ The dashboard ships with **$0** starting balance. On page load, it tries to fetc
 |---|---|---|---|
 | `/api/proxy?endpoint=…` | GET | none | Public Kalshi market data |
 | `/api/balance` | GET | RSA | Wallet balance + open positions |
-| `/api/order` | POST | RSA | Place a limit order (subject to $30–50 cap) |
+| `/api/order` | POST | RSA | Place a limit order (subject to $30–40 cap) |
 
 ### Place an order via curl
 
 ```bash
-# ✅ Allowed — notional $35.00 is inside the $30–50 range
+# ✅ Allowed — $35.00 notional
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
-  -d '{
-    "market": "KXBTC-26DEC31-B500000",
-    "side": "yes",
-    "price": 35,
-    "size": 1
-  }'
+  -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":35,"size":100}'
 
-# ❌ Rejected — notional $25.00 is below the $30 minimum
+# ❌ Rejected — $25.00 below $30 minimum
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
-  -d '{
-    "market": "KXBTC-26DEC31-B500000",
-    "side": "yes",
-    "price": 25,
-    "size": 1
-  }'
+  -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":25,"size":100}'
 
-# ❌ Rejected — notional $60.00 is above the $50 maximum
+# ❌ Rejected — $45.00 above $40 maximum
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
-  -d '{
-    "market": "KXBTC-26DEC31-B500000",
-    "side": "yes",
-    "price": 60,
-    "size": 1
-  }'
+  -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":45,"size":100}'
 ```
 
 ---
 
-## Troubleshooting — "I clicked submit but nothing happened on Kalshi"
+## Troubleshooting
 
-| Symptom | Likely cause | Fix |
+| Symptom | Cause | Fix |
 |---|---|---|
-| Dashboard shows ❌ "Kalshi API not configured" | Env vars not set, or set on Preview but not Production | Vercel → Settings → Environment Variables → ensure both `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` exist for **Production** environment. Then Redeploy. |
-| Order returns 500 with "Kalshi credentials not set on server" | Same as above | Same as above |
-| Order returns 400 with "below the $30 minimum" or "exceeds the $50 hard cap" | Your price × size notional is outside $30–50 | Adjust price or size until the notional preview turns green |
-| Order returns 4xx with `detail` from Kalshi | Insufficient funds, invalid ticker, market closed, or signature error | Read the `detail` field in the response — Kalshi tells you exactly what's wrong |
-| Order returns 401 / "Invalid signature" | Your private key doesn't match the public key uploaded to Kalshi, or the key was regenerated | Regenerate keypair, re-upload public key to Kalshi, update `KALSHI_PRIVATE_KEY_PEM` env var |
-| Bot in LIVE mode shows `[LIVE FAIL]` repeatedly | Same causes as above | Check the System Log — each failure has the reason |
-| Bot in PAPER mode shows no trades | Signals not confident enough, or already at max concurrent positions | Lower the `Max Concurrent` value or wait — the bot only trades when its signal threshold is met |
-| Dashboard loads but markets tab is empty | You haven't clicked "Fetch Live Kalshi Markets" yet | Click the button |
+| Brain shows "Kalshi API not configured" on load | Env vars missing or set on wrong environment | Vercel → Settings → Environment Variables → ensure both `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` exist for **Production**. Then Redeploy. |
+| Brain runs but never TRADES, only HOLD/SKIP | Signals not strong enough, or risk gates failing | Check the Decision Log — it tells you exactly which gate failed. Lower `Min Confidence` in Config tab if needed. |
+| Brain logs SKIP "Risk gates failed: Budget" | Cash available < $30 | You already have a position open (max 1 concurrent). Wait for it to close, or increase investment cap. |
+| Brain logs SKIP "Risk gates failed: Cap" | Computed notional can't fit in $30–40 at current price | Market price is too extreme (very high or very low). Brain will retry next cycle with different markets. |
+| LIVE order returns 400 "below $30 minimum" / "exceeds $40 hard cap" | Server-side guardrail | Adjust price or size in the Manual Order form until notional preview turns green. |
+| LIVE order returns 401 "Invalid signature" | Private key doesn't match public key on Kalshi | Regenerate keypair, re-upload public key to Kalshi, update env var. |
+| LIVE order returns 4xx with `detail` from Kalshi | Insufficient funds, invalid ticker, market closed | Read the `detail` field — Kalshi explains the rejection. |
+| Brain in LIVE mode shows `[BRAIN-LIVE FAIL]` repeatedly | Same causes as above | Check the System Log — each failure has the reason. |
+
+---
+
+## File structure
+
+```
+.
+├── index.html           Dashboard with AI Brain tab
+├── package.json         No runtime deps
+├── vercel.json          No framework, no build step
+├── .gitignore
+├── .env.example         Kalshi API key template
+├── api/
+│   ├── proxy.js         Public Kalshi market data
+│   ├── order.js         Authenticated order placement ($30-40 cap)
+│   ├── balance.js       Authenticated balance + positions
+│   └── keys.js          Kalshi RSA signing + cap enforcement
+└── README.md
+```
 
 ---
 

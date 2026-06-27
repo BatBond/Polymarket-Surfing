@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FABLE ELITE — Kalshi Quantitative Trading System</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏄</text></svg>">
+<title>FABLE ELITE — Kalshi AI Trading Brain</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -37,19 +37,22 @@ select.inp option{background:var(--card);color:var(--text)}
 .badge-red{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(255,71,87,.15)}
 .badge-gold{background:var(--gold-bg);color:var(--gold);border:1px solid rgba(240,180,41,.15)}
 .badge-cyan{background:var(--cyan-bg);color:var(--cyan);border:1px solid rgba(0,212,255,.15)}
+.badge-purple{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(179,102,255,.15)}
 table.dt{width:100%;border-collapse:collapse}
 table.dt th{text-align:left;padding:4px 6px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-bottom:1px solid var(--border)}
 table.dt td{padding:4px 6px;font-size:10px;border-bottom:1px solid var(--border)}
 table.dt tr:hover td{background:var(--card2)}
-.log-wrap{max-height:160px;overflow-y:auto}
+.log-wrap{overflow-y:auto}
 .log-e{font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 5px;border-left:2px solid var(--border);margin-bottom:1px;line-height:1.3}
-.log-e.buy{border-left-color:var(--accent)}.log-e.sell{border-left-color:var(--danger)}.log-e.research{border-left-color:var(--cyan)}.log-e.arb{border-left-color:var(--gold)}.log-e.risk{border-left-color:var(--purple)}.log-e.system{border-left-color:var(--muted)}.log-e.live{border-left-color:var(--gold);background:var(--gold-bg)}
+.log-e.buy{border-left-color:var(--accent)}.log-e.sell{border-left-color:var(--danger)}.log-e.research{border-left-color:var(--cyan)}.log-e.risk{border-left-color:var(--purple)}.log-e.system{border-left-color:var(--muted)}.log-e.live{border-left-color:var(--gold);background:var(--gold-bg)}.log-e.decision{border-left-color:var(--accent);background:rgba(0,232,123,.04)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(1.6)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
 .anim-in{animation:slideUp .35s ease-out both}
 .pulse-dot{width:6px;height:6px;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+.scan-line{position:absolute;top:0;left:0;width:20%;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scan 3s linear infinite;opacity:.5}
 #toasts{position:fixed;top:60px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:4px}
-.toast{padding:6px 12px;border-radius:5px;font-size:10px;font-weight:500;display:flex;align-items:center;gap:5px;transform:translateX(120%);transition:transform .25s;max-width:300px}
+.toast{padding:6px 12px;border-radius:5px;font-size:10px;font-weight:500;display:flex;align-items:center;gap:5px;transform:translateX(120%);transition:transform .25s;max-width:320px}
 .toast.show{transform:translateX(0)}
 .toast-s{background:var(--accent-bg);border:1px solid var(--accent);color:var(--accent)}
 .toast-e{background:var(--danger-bg);border:1px solid var(--danger);color:var(--danger)}
@@ -59,6 +62,15 @@ table.dt tr:hover td{background:var(--card2)}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-content{display:none}.tab-content.active{display:block}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:var(--surface)}::-webkit-scrollbar-thumb{background:var(--muted);border-radius:2px}
+.brain-stage{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:5px;background:var(--surface);margin-bottom:4px;font-size:9px}
+.brain-stage.active{background:var(--accent-bg);border-left:2px solid var(--accent)}
+.brain-stage.done{opacity:.6}
+.brain-stage-num{width:16px;height:16px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--dim)}
+.brain-stage.active .brain-stage-num{background:var(--accent);color:var(--bg)}
+.brain-stage.done .brain-stage-num{background:var(--accent);color:var(--bg);opacity:.5}
+.risk-row{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-radius:4px;font-size:9px;margin-bottom:2px}
+.risk-row.pass{background:rgba(0,232,123,.06);border-left:2px solid var(--accent)}
+.risk-row.fail{background:rgba(255,71,87,.06);border-left:2px solid var(--danger)}
 @media(max-width:1200px){.g1{grid-template-columns:1fr!important}.g2{grid-template-columns:1fr!important}.g3{grid-template-columns:1fr!important}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
@@ -69,84 +81,165 @@ table.dt tr:hover td{background:var(--card2)}
 <div class="max-w-[1800px] mx-auto px-3 py-2 flex items-center justify-between flex-wrap gap-2">
 <div class="flex items-center gap-2">
 <div class="pulse-dot" id="header-dot" style="background:var(--danger);box-shadow:0 0 6px var(--danger)"></div>
-<div><h1 class="text-[11px] font-bold tracking-[.18em]">FABLE ELITE <span style="color:var(--muted)">·</span> <span style="color:var(--accent)">KALSHI SYSTEM</span></h1><p class="mono text-[8px] tracking-wider" style="color:var(--muted)">KALSHI TRADE API v2 · US-LEGAL · v7.0</p></div>
+<div><h1 class="text-[11px] font-bold tracking-[.18em]">FABLE ELITE <span style="color:var(--muted)">·</span> <span style="color:var(--accent)">AI BRAIN</span></h1><p class="mono text-[8px] tracking-wider" style="color:var(--muted)">KALSHI AUTONOMOUS ENGINE · v8.0</p></div>
 </div>
 <div class="flex items-center gap-4 flex-wrap">
-<div class="text-right"><p class="lbl" style="margin:0">PORTFOLIO</p><p class="mono text-sm font-bold" id="h-pv">$0</p></div>
+<div class="text-right"><p class="lbl" style="margin:0">INVESTMENT</p><p class="mono text-sm font-bold" style="color:var(--gold)" id="h-pv">$0</p></div>
 <div class="text-right"><p class="lbl" style="margin:0">P&L</p><p class="mono text-sm font-bold" id="h-pnl">$0</p></div>
-<div class="text-right"><p class="lbl" style="margin:0">ACTIVE</p><p class="mono text-sm font-bold" id="h-pos">0</p></div>
-<div class="text-right"><p class="lbl" style="margin:0">KELLY %</p><p class="mono text-sm font-bold" style="color:var(--gold)" id="h-kelly">0%</p></div>
+<div class="text-right"><p class="lbl" style="margin:0">POSITIONS</p><p class="mono text-sm font-bold" id="h-pos">0</p></div>
+<div class="text-right"><p class="lbl" style="margin:0">BRAIN</p><p class="mono text-sm font-bold" style="color:var(--purple)" id="h-brain">IDLE</p></div>
 <div id="status-badge" class="badge badge-red"><i class="fas fa-circle text-[5px]"></i> OFFLINE</div>
 </div></div></header>
 
 <main class="max-w-[1800px] mx-auto px-3 py-3 relative" style="z-index:1">
 <section class="grid gap-2 mb-3" style="grid-template-columns:repeat(10,1fr)">
-<div class="card p-2 anim-in" style="animation-delay:.03s"><p class="lbl">Portfolio</p><p class="mono text-xs font-bold" id="s-pv">$0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.03s"><p class="lbl">Investment</p><p class="mono text-xs font-bold" style="color:var(--gold)" id="s-pv">$0</p></div>
 <div class="card p-2 anim-in" style="animation-delay:.05s"><p class="lbl">Session P&L</p><p class="mono text-xs font-bold" id="s-pnl">$0</p></div>
 <div class="card p-2 anim-in" style="animation-delay:.07s"><p class="lbl">Win Rate</p><p class="mono text-xs font-bold" id="s-wr">0%</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.09s"><p class="lbl">Sharpe</p><p class="mono text-xs font-bold" id="s-sr">0.00</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.11s"><p class="lbl">Trades</p><p class="mono text-xs font-bold" id="s-tt">0</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.13s"><p class="lbl">Live Orders</p><p class="mono text-xs font-bold" style="color:var(--gold)" id="s-live">0</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.15s"><p class="lbl">VaR 95%</p><p class="mono text-xs font-bold" style="color:var(--danger)" id="s-var">$0</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.17s"><p class="lbl">Max DD</p><p class="mono text-xs font-bold" style="color:var(--danger)" id="s-dd">0%</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.19s"><p class="lbl">Kelly Size</p><p class="mono text-xs font-bold" style="color:var(--gold)" id="s-kelly">0%</p></div>
-<div class="card p-2 anim-in" style="animation-delay:.21s"><p class="lbl">Exposure</p><p class="mono text-xs font-bold" style="color:var(--cyan)" id="s-exp">$0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.09s"><p class="lbl">Trades</p><p class="mono text-xs font-bold" id="s-tt">0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.11s"><p class="lbl">Live Orders</p><p class="mono text-xs font-bold" style="color:var(--gold)" id="s-live">0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.13s"><p class="lbl">Auto-Trades</p><p class="mono text-xs font-bold" style="color:var(--purple)" id="s-auto">0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.15s"><p class="lbl">Research Scans</p><p class="mono text-xs font-bold" style="color:var(--cyan)" id="s-scans">0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.17s"><p class="lbl">Markets Watched</p><p class="mono text-xs font-bold" id="s-mkts">0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.19s"><p class="lbl">Exposure</p><p class="mono text-xs font-bold" style="color:var(--cyan)" id="s-exp">$0</p></div>
+<div class="card p-2 anim-in" style="animation-delay:.21s"><p class="lbl">Cash Avail.</p><p class="mono text-xs font-bold" style="color:var(--accent)" id="s-cash">$0</p></div>
 </section>
 
 <div class="card mb-3 p-3 anim-in" style="animation-delay:.23s" id="live-banner">
 <div class="flex items-center justify-between flex-wrap gap-2">
 <div class="flex items-center gap-2">
 <i class="fas fa-info-circle" style="color:var(--gold)"></i>
-<p class="text-[10px]" style="color:var(--dim)">
-<span id="mode-text"><b style="color:var(--gold)">PAPER MODE</b> — bot simulates trades locally, no real orders sent to Kalshi.</span>
-</p>
+<p class="text-[10px]" style="color:var(--dim)" id="mode-text"><b style="color:var(--gold)">PAPER MODE</b> — AI Brain simulates trades locally, no real orders sent to Kalshi.</p>
 </div>
 <div class="flex items-center gap-2">
-<button class="btn btn-ghost btn-sm" id="refresh-bal-btn"><i class="fas fa-rotate"></i> Refresh Balance</button>
+<button class="btn btn-ghost btn-sm" id="refresh-bal-btn"><i class="fas fa-rotate"></i> Sync Balance</button>
 </div>
 </div>
 </div>
 
 <section class="card mb-3 anim-in" style="animation-delay:.25s">
 <div class="tab-bar px-3 pt-2">
-<button class="tab-btn active" data-tab="bot">Bot Control</button>
-<button class="tab-btn" data-tab="research">Markets</button>
+<button class="tab-btn active" data-tab="brain"><i class="fas fa-brain"></i> AI Brain</button>
+<button class="tab-btn" data-tab="config">Config</button>
+<button class="tab-btn" data-tab="markets">Markets</button>
 <button class="tab-btn" data-tab="positions">Positions</button>
-<button class="tab-btn" data-tab="execution">Manual Order</button>
+<button class="tab-btn" data-tab="manual">Manual Order</button>
 <button class="tab-btn" data-tab="risk">Risk Matrix</button>
 </div>
 
-<div class="tab-content active p-4" id="tab-bot">
+<!-- ====================== AI BRAIN TAB ====================== -->
+<div class="tab-content active p-4" id="tab-brain">
 <div class="grid g2 gap-4" style="grid-template-columns:280px 1fr">
 <div class="space-y-3">
+<div><p class="lbl">AI Brain Status</p>
+<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid var(--purple)">
+<p class="mono text-xs font-bold" style="color:var(--purple)" id="brain-state">IDLE</p>
+<p class="text-[8px]" style="color:var(--muted)" id="brain-sub">Press Start AI Brain to begin</p>
+</div>
+</div>
 <div><p class="lbl">Mode</p><div class="toggle" id="mode-tog"><button class="toggle-btn on" data-v="paper">PAPER</button><button class="toggle-btn" data-v="live">LIVE</button></div></div>
-<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan"><option value="5">5s</option><option value="10" selected>10s</option><option value="30">30s</option></select></div>
-<div><p class="lbl">Max Position ($)</p><input type="number" class="inp" id="cfg-maxpos" value="30" min="30" max="50"></div>
-<div><p class="lbl">Max Concurrent</p><input type="number" class="inp" id="cfg-concurrent" value="3"></div>
-<div><p class="lbl">Stop Loss (%)</p><input type="number" class="inp" id="cfg-sl" value="12"></div>
-<div><p class="lbl">Take Profit (%)</p><input type="number" class="inp" id="cfg-tp" value="25"></div>
-<div><p class="lbl">Kelly Fraction</p><select class="inp" id="cfg-kelly"><option value="0.25">Quarter Kelly</option><option value="0.5" selected>Half Kelly</option><option value="1">Full Kelly</option></select></div>
+<div><p class="lbl">Investment Cap ($)</p><input type="number" class="inp" id="cfg-invest" value="50" min="50" max="500"></div>
+<div><p class="lbl">Per-Order Cap ($)</p><input type="number" class="inp" id="cfg-maxpos" value="35" min="30" max="40" readonly style="opacity:.7"></div>
+<div><p class="lbl">Max Concurrent</p><input type="number" class="inp" id="cfg-concurrent" value="1" min="1" max="1" readonly style="opacity:.7"></div>
+<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan"><option value="15">15s</option><option value="30" selected>30s</option><option value="60">60s</option></select></div>
+<div><p class="lbl">Stop Loss (%)</p><input type="number" class="inp" id="cfg-sl" value="15"></div>
+<div><p class="lbl">Take Profit (%)</p><input type="number" class="inp" id="cfg-tp" value="30"></div>
+<div><p class="lbl">Min Confidence to Trade</p><select class="inp" id="cfg-minconf"><option value="50">50%</option><option value="60" selected>60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
+<button class="btn btn-accent w-full justify-center" id="start-btn"><i class="fas fa-play"></i> Start AI Brain</button>
+<button class="btn btn-danger w-full justify-center" id="stop-btn" disabled><i class="fas fa-stop"></i> Stop AI Brain</button>
 <div class="p-2 rounded" style="background:var(--surface);border-left:2px solid var(--gold)">
-<p class="lbl" style="color:var(--gold)">LIVE MODE BEHAVIOR</p>
-<p class="text-[9px]" style="color:var(--dim);line-height:1.5">When LIVE is selected, the bot will POST real orders to <span class="mono">/api/order</span> with your Kalshi keys. Each order is bounded to $30–50 by the server.</p>
+<p class="lbl" style="color:var(--gold)">BRAIN PIPELINE</p>
+<p class="text-[9px]" style="color:var(--dim);line-height:1.5">Every scan cycle: <b>Research</b> → <b>Score</b> → <b>Risk Check</b> → <b>Decide</b> → <b>Execute</b></p>
 </div>
-<button class="btn btn-accent w-full justify-center" id="start-btn"><i class="fas fa-play"></i> Start Bot</button>
-<button class="btn btn-danger w-full justify-center" id="stop-btn" disabled><i class="fas fa-stop"></i> Stop Bot</button>
 </div>
-<div class="grid gap-3" style="grid-template-columns:1fr 1fr">
-<div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--accent)">EQUITY CURVE</h3><div style="height:160px;background:var(--surface);border-radius:6px;position:relative"><canvas id="eq-cv" style="position:absolute;inset:0"></canvas></div></div>
-<div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--gold)">STRATEGY P&L</h3><div style="height:160px;background:var(--surface);border-radius:6px;position:relative"><canvas id="strat-cv" style="position:absolute;inset:0"></canvas></div></div>
-<div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--cyan)">ORDER FLOW</h3><div style="height:160px;background:var(--surface);border-radius:6px;position:relative"><canvas id="flow-cv" style="position:absolute;inset:0"></canvas></div></div>
-<div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--purple)">KELLY CRITERION</h3><div id="kelly-panel" style="height:160px;background:var(--surface);border-radius:6px;padding:8px;overflow-y:auto"></div></div>
-</div></div></div>
+<div class="space-y-3">
+<div class="card p-3" style="background:var(--card2)">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--purple)">PIPELINE STATUS</h3>
+<div id="brain-pipeline">
+<div class="brain-stage" id="stage-research"><div class="brain-stage-num">1</div><div><b>RESEARCH</b> — Fetch live Kalshi markets</div></div>
+<div class="brain-stage" id="stage-score"><div class="brain-stage-num">2</div><div><b>SCORE</b> — Compute Bayesian edge + momentum + volume</div></div>
+<div class="brain-stage" id="stage-risk"><div class="brain-stage-num">3</div><div><b>RISK CHECK</b> — Budget / slots / drawdown / cap</div></div>
+<div class="brain-stage" id="stage-decide"><div class="brain-stage-num">4</div><div><b>DECIDE</b> — Trade / Hold / Skip with reason</div></div>
+<div class="brain-stage" id="stage-execute"><div class="brain-stage-num">5</div><div><b>EXECUTE</b> — POST to /api/order (LIVE) or log (PAPER)</div></div>
+</div>
+</div>
+<div class="card p-3" style="background:var(--card2)">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--cyan)">TOP CANDIDATES (last scan)</h3>
+<div style="max-height:180px;overflow-y:auto" id="brain-candidates">
+<p class="text-[9px]" style="color:var(--muted);padding:8px">No scans yet. Press Start AI Brain.</p>
+</div>
+</div>
+<div class="card p-3" style="background:var(--card2)">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--purple)">RISK ANALYSIS (last decision)</h3>
+<div id="brain-risk">
+<p class="text-[9px]" style="color:var(--muted);padding:8px">No decisions yet.</p>
+</div>
+</div>
+<div class="card p-3" style="background:var(--card2)">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--accent)">DECISION LOG</h3>
+<div id="brain-decisions" style="max-height:220px;overflow-y:auto">
+<p class="text-[9px]" style="color:var(--muted);padding:8px">No decisions yet.</p>
+</div>
+</div>
+</div></div>
+</div>
 
-<div class="tab-content p-4" id="tab-research">
+<!-- ====================== CONFIG TAB ====================== -->
+<div class="tab-content p-4" id="tab-config">
+<div class="grid g2 gap-4" style="grid-template-columns:1fr 1fr">
+<div class="space-y-3">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--accent)">STRATEGY CONFIG</h3>
+<div><p class="lbl">Mode</p><div class="toggle" id="mode-tog2"><button class="toggle-btn on" data-v="paper">PAPER</button><button class="toggle-btn" data-v="live">LIVE</button></div></div>
+<div><p class="lbl">Investment Cap ($)</p><input type="number" class="inp" id="cfg-invest2" value="50" min="50" max="500"></div>
+<div><p class="lbl">Per-Order Target ($)</p><input type="number" class="inp" id="cfg-target" value="35" min="30" max="40"></div>
+<div><p class="lbl">Max Concurrent Positions</p><input type="number" class="inp" id="cfg-concurrent2" value="1" min="1" max="1" readonly style="opacity:.7"></div>
+<div><p class="lbl">Scan Interval</p><select class="inp" id="cfg-scan2"><option value="15">15s</option><option value="30" selected>30s</option><option value="60">60s</option></select></div>
+<div><p class="lbl">Stop Loss (%)</p><input type="number" class="inp" id="cfg-sl2" value="15"></div>
+<div><p class="lbl">Take Profit (%)</p><input type="number" class="inp" id="cfg-tp2" value="30"></div>
+<div><p class="lbl">Min Confidence to Trade</p><select class="inp" id="cfg-minconf2"><option value="50">50%</option><option value="60" selected>60%</option><option value="70">70%</option><option value="80">80%</option></select></div>
+</div>
+<div class="space-y-3">
+<h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--gold)">ACTIVE STRATEGIES</h3>
+<div class="space-y-1" id="strat-toggles">
+<label class="flex items-center gap-2 cursor-pointer text-[10px]"><input type="checkbox" checked class="accent-emerald-500" data-s="momentum"> Momentum</label>
+<label class="flex items-center gap-2 cursor-pointer text-[10px]"><input type="checkbox" checked class="accent-emerald-500" data-s="mean-revert"> Mean Reversion</label>
+<label class="flex items-center gap-2 cursor-pointer text-[10px]"><input type="checkbox" checked class="accent-emerald-500" data-s="bayesian"> Bayesian Edge</label>
+<label class="flex items-center gap-2 cursor-pointer text-[10px]"><input type="checkbox" checked class="accent-emerald-500" data-s="volume"> Volume Filter</label>
+</div>
+<div class="p-2 rounded mt-3" style="background:var(--surface);border-left:2px solid var(--cyan)">
+<p class="lbl" style="color:var(--cyan)">HOW THE BRAIN DECIDES</p>
+<p class="text-[9px]" style="color:var(--dim);line-height:1.5">
+For each market, the brain computes:<br>
+• <b>Momentum</b>: recent price direction<br>
+• <b>Mean reversion</b>: distance from 20-period MA<br>
+• <b>Bayesian edge</b>: posterior probability vs market price<br>
+• <b>Volume score</b>: normalized 0-1<br><br>
+Composite signal = weighted sum. If signal > threshold AND confidence ≥ min, the market becomes a candidate. Top candidate goes through risk gates.
+</p>
+</div>
+<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid var(--danger)">
+<p class="lbl" style="color:var(--danger)">RISK GATES (ALL must pass)</p>
+<p class="text-[9px]" style="color:var(--dim);line-height:1.5">
+1. Budget: cash_available ≥ order_notional<br>
+2. Slots: open_positions < max_concurrent<br>
+3. Cap: $30 ≤ notional ≤ $40 (server-enforced)<br>
+4. No duplicate: not already in this market<br>
+5. Drawdown: current_dd < 20%<br>
+6. Confidence: signal_confidence ≥ min_threshold
+</p>
+</div>
+</div></div>
+</div>
+
+<!-- ====================== MARKETS TAB ====================== -->
+<div class="tab-content p-4" id="tab-markets">
 <div><h3 class="text-[10px] font-bold tracking-wider mb-2">KALSHI MARKETS</h3>
-<p class="text-[9px] mb-2" style="color:var(--muted)">Live markets fetched from <span class="mono">/api/proxy?endpoint=markets?status=open&limit=50</span>. Click a row to load it into the Manual Order tab.</p>
+<p class="text-[9px] mb-2" style="color:var(--muted)">Live markets fetched from <span class="mono">/api/proxy?endpoint=markets?status=open&limit=50</span>. Brain auto-refreshes this list every scan cycle.</p>
 <button class="btn btn-ghost btn-sm mb-2" id="load-markets-btn"><i class="fas fa-download"></i> Fetch Live Kalshi Markets</button>
-<div style="max-height:500px;overflow-y:auto"><table class="dt"><thead><tr><th>Ticker</th><th>Title</th><th>Cat</th><th>Yes Bid</th><th>Yes Ask</th><th>Vol</th><th>Action</th></tr></thead><tbody id="mkt-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Click "Fetch Live Kalshi Markets" to load real market data</td></tr></tbody></table></div>
+<div style="max-height:500px;overflow-y:auto"><table class="dt"><thead><tr><th>Ticker</th><th>Title</th><th>Cat</th><th>Yes Bid</th><th>Yes Ask</th><th>Vol</th><th>Action</th></tr></thead><tbody id="mkt-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Click "Fetch Live Kalshi Markets" or start the AI Brain to auto-load</td></tr></tbody></table></div>
 </div></div>
 
+<!-- ====================== POSITIONS TAB ====================== -->
 <div class="tab-content p-4" id="tab-positions">
 <div class="flex items-center justify-between mb-2"><h3 class="text-[10px] font-bold tracking-wider">ACTIVE POSITIONS</h3>
 <div class="flex gap-2">
@@ -156,39 +249,44 @@ table.dt tr:hover td{background:var(--card2)}
 <div style="max-height:350px;overflow-y:auto"><table class="dt"><thead><tr><th>Source</th><th>Market</th><th>Side</th><th>Entry</th><th>Now</th><th>Size</th><th>P&L</th><th>Strategy</th><th>Status</th></tr></thead><tbody id="pos-body"></tbody></table></div>
 </div>
 
-<div class="tab-content p-4" id="tab-execution">
+<!-- ====================== MANUAL ORDER TAB ====================== -->
+<div class="tab-content p-4" id="tab-manual">
 <div class="grid g2 gap-4" style="grid-template-columns:1fr 1fr">
 <div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--accent)">REAL KALSHI ORDER</h3>
 <div class="space-y-3">
 <div><p class="lbl">Market Ticker</p><input type="text" class="inp" id="ex-market" placeholder="e.g. KXBTC-26DEC31-B500000"></div>
 <div><p class="lbl">Side</p><div class="toggle" id="ex-side-tog"><button class="toggle-btn on" data-v="yes">YES</button><button class="toggle-btn" data-v="no">NO</button></div></div>
 <div><p class="lbl">Price (cents, 1-99)</p><input type="number" class="inp" id="ex-price" value="50" min="1" max="99"></div>
-<div><p class="lbl">Size (contracts)</p><input type="number" class="inp" id="ex-size" value="1" min="1"></div>
+<div><p class="lbl">Size (contracts)</p><input type="number" class="inp" id="ex-size" value="70" min="1"></div>
 <div class="p-2 rounded" style="background:var(--surface)">
 <p class="lbl" style="margin:0">Order Notional</p>
 <p class="mono text-sm font-bold" id="ex-notional">$0.00</p>
-<p class="text-[8px]" id="ex-cap-note" style="color:var(--muted);margin-top:2px">Must be between $30 and $50</p>
+<p class="text-[8px]" id="ex-cap-note" style="color:var(--muted);margin-top:2px">Must be between $30 and $40</p>
 </div>
 <button class="btn btn-accent w-full justify-center" id="ex-exec-btn"><i class="fas fa-bolt"></i> Submit to Kalshi</button>
 </div></div>
 <div>
 <h3 class="text-[10px] font-bold tracking-wider mb-2">EXECUTION LOG</h3>
-<div id="ex-queue" style="max-height:260px;overflow-y:auto"></div>
+<div id="ex-queue" style="max-height:200px;overflow-y:auto"></div>
 <h3 class="text-[10px] font-bold tracking-wider mb-2 mt-3">SYSTEM LOG</h3>
 <div id="log-wrap" class="log-wrap" style="max-height:200px;overflow-y:auto"></div>
 </div></div></div>
 
+<!-- ====================== RISK MATRIX TAB ====================== -->
 <div class="tab-content p-4" id="tab-risk">
 <div class="grid g2 gap-4" style="grid-template-columns:1fr 1fr">
 <div><h3 class="text-[10px] font-bold tracking-wider mb-2" style="color:var(--danger)">RISK MATRIX</h3>
-<div class="space-y-2" id="risk-panel">
-<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Per-Order Cap (server-enforced)</p><p class="mono text-sm font-bold" style="color:var(--accent)">$30 – $50</p></div>
-<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Max Concurrent Positions</p><p class="mono text-sm font-bold" id="risk-conc">3</p></div>
-<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Stop Loss</p><p class="mono text-sm font-bold" id="risk-sl">12%</p></div>
-<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Take Profit</p><p class="mono text-sm font-bold" id="risk-tp">25%</p></div>
+<div class="space-y-2">
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Investment Cap</p><p class="mono text-sm font-bold" style="color:var(--gold)" id="risk-invest">$50</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Per-Order Cap (server-enforced)</p><p class="mono text-sm font-bold" style="color:var(--accent)">$30 – $40</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Max Concurrent Positions</p><p class="mono text-sm font-bold" id="risk-conc">1</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Stop Loss</p><p class="mono text-sm font-bold" id="risk-sl">15%</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Take Profit</p><p class="mono text-sm font-bold" id="risk-tp">30%</p></div>
 <div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Current Exposure</p><p class="mono text-sm font-bold" id="risk-exp" style="color:var(--cyan)">$0</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Cash Available</p><p class="mono text-sm font-bold" id="risk-cash" style="color:var(--accent)">$0</p></div>
+<div class="p-2 rounded" style="background:var(--surface)"><p class="lbl" style="margin:0">Max Drawdown</p><p class="mono text-sm font-bold" id="risk-dd" style="color:var(--danger)">0%</p></div>
 </div></div>
-<div><h3 class="text-[10px] font-bold tracking-wider mb-2">POSITION HEATMAP</h3><div style="height:260px;background:var(--surface);border-radius:6px;padding:8px;overflow-y:auto" id="risk-heatmap"></div></div>
+<div><h3 class="text-[10px] font-bold tracking-wider mb-2">CASH FLOW</h3><div style="height:260px;background:var(--surface);border-radius:6px;position:relative"><canvas id="risk-cv" style="position:absolute;inset:0"></canvas></div></div>
 </div></div>
 
 </section>
@@ -196,11 +294,10 @@ table.dt tr:hover td{background:var(--card2)}
 
 <script>
 // ===========================================================================
-// Kalshi market ticker reference (used for the paper bot's price simulation
-// and for the Manual Order form's autocomplete). For LIVE market data, use
-// the Markets tab → "Fetch Live Kalshi Markets" button.
+// Kalshi market reference — used as fallback when live fetch fails.
+// In operation, the brain pulls real markets from /api/proxy every scan.
 // ===========================================================================
-var KALSHI_MARKETS=[
+var FALLBACK_MARKETS=[
 {id:'KXBTC-26DEC31-B500000',q:'Bitcoin above $100K on Dec 31',cat:'crypto',base:64.8,vol:9800000},
 {id:'KXBTC-26DEC31-B750000',q:'Bitcoin above $150K on Dec 31',cat:'crypto',base:18.2,vol:4200000},
 {id:'KXETH-26DEC31-B10000',q:'Ethereum above $10K on Dec 31',cat:'crypto',base:8.4,vol:1100000},
@@ -217,276 +314,583 @@ var KALSHI_MARKETS=[
 var CATC={crypto:'#f0b429',economics:'#00d4ff',politics:'#b366ff',tech:'#00e87b',commodities:'#ff8c42'};
 
 // ===========================================================================
-// Bot state — starts at $0, no fake seed.
+// AI Brain state
 // ===========================================================================
-var bot={
-  running:false, mode:'paper',
-  portfolioValue:0, startingCapital:0,
-  positions:[], closedTrades:[], equityHistory:[0], returnsHistory:[],
-  tradeCount:0, wins:0, losses:0, liveOrderCount:0,
-  maxDrawdown:0, peakEquity:0, nextPosId:1,
-  signals:[], marketPrices:{}, priceHistory:{}, bayesianState:{},
-  orderFlow:[], execQueue:[], stratPnL:{meanrevert:0,momentum:0,kelly:0},
-  timers:[], cfg:{maxPos:30,concurrent:3,sl:12,tp:25,kellyFrac:.5,scanMs:10000},
-
-  init:function(){
-    for(var i=0;i<KALSHI_MARKETS.length;i++){
-      var m=KALSHI_MARKETS[i];
-      this.marketPrices[m.id]=m.base+(Math.random()-.5)*4;
-      this.priceHistory[m.id]=this._genH(m.base,60);
-      this.bayesianState[m.id]={alpha:2+m.base/20,beta:2+(100-m.base)/20,observations:0,successes:0};
-    }
-    // Populate the Manual Order market dropdown with default Kalshi tickers
-    var exMarket=document.getElementById('ex-market');
-    if(exMarket && !exMarket.value) exMarket.value=KALSHI_MARKETS[0].id;
-  },
-
-  _genH:function(b,n){var h=[b];for(var i=1;i<n;i++)h.push(Math.max(1,Math.min(99,h[i-1]+(Math.random()-.48)*2)));return h},
-
-  start:function(){
-    if(this.running)return;
-    // Read config
-    this.cfg.maxPos=parseInt(document.getElementById('cfg-maxpos').value)||30;
-    this.cfg.concurrent=parseInt(document.getElementById('cfg-concurrent').value)||3;
-    this.cfg.sl=parseInt(document.getElementById('cfg-sl').value)||12;
-    this.cfg.tp=parseInt(document.getElementById('cfg-tp').value)||25;
-    this.cfg.kellyFrac=parseFloat(document.getElementById('cfg-kelly').value)||.5;
-    this.cfg.scanMs=(parseInt(document.getElementById('cfg-scan').value)||10)*1000;
-    this.running=true;
-    addLog('FABLE ELITE v7.0 starting in '+this.mode.toUpperCase()+' mode','system');
-    if(this.mode==='live'){
-      addLog('LIVE MODE: Real orders will be submitted to Kalshi','live');
-      showToast('LIVE mode active — real orders will hit Kalshi','info');
-    } else {
-      addLog('PAPER MODE: Simulated trades only — no real orders','system');
-    }
-    showToast('Bot started — '+this.mode.toUpperCase()+' mode','success');
-    var self=this;
-    this.timers.push(setInterval(function(){self.tickPrices()},1500));
-    this.timers.push(setInterval(function(){self.runResearch()},this.cfg.scanMs));
-    this.timers.push(setInterval(function(){self.runTrades()},4000));
-    this.timers.push(setInterval(function(){self.runRisk()},2000));
-    this.timers.push(setInterval(function(){self.updateBayesian()},5000));
-    this.timers.push(setInterval(function(){self.simFlow()},2000));
-    this.runResearch(); this.updateBayesian(); this.simFlow();
-    updateBotUI(true);
-  },
-
-  stop:function(){
-    this.running=false;
-    this.timers.forEach(function(t){clearInterval(t)});
-    this.timers=[];
-    addLog('Bot stopped','risk');
-    showToast('Bot stopped','info');
-    updateBotUI(false);
-  },
-
-  tickPrices:function(){
-    if(!this.running)return;
-    for(var i=0;i<KALSHI_MARKETS.length;i++){
-      var m=KALSHI_MARKETS[i],p=this.marketPrices[m.id];
-      this.marketPrices[m.id]=Math.max(1,Math.min(99,p+(Math.random()-.48)*1.8));
-      this.priceHistory[m.id].push(this.marketPrices[m.id]);
-      if(this.priceHistory[m.id].length>200)this.priceHistory[m.id].shift();
-    }
-    for(var j=0;j<this.positions.length;j++){
-      var pos=this.positions[j];
-      if(pos.source==='live')continue; // live positions get their price from Kalshi
-      pos.current=this.marketPrices[pos.marketId]||pos.current;
-      var d=pos.side==='YES'?(pos.current-pos.entry):(pos.entry-pos.current);
-      pos.pnl=Math.round(d/100*pos.size*100)/100;
-    }
-    var tp=this.positions.reduce(function(s,p){return s+p.pnl},0);
-    var eq=this.portfolioValue+tp;
-    this.equityHistory.push(eq);
-    if(this.equityHistory.length>500)this.equityHistory.shift();
-    if(eq>this.peakEquity)this.peakEquity=eq;
-    if(this.peakEquity>0)this.maxDrawdown=Math.max(this.maxDrawdown,(this.peakEquity-eq)/this.peakEquity*100);
-    if(this.equityHistory.length>1 && this.equityHistory[this.equityHistory.length-2]>0){
-      var r=this.equityHistory[this.equityHistory.length-1]/this.equityHistory[this.equityHistory.length-2]-1;
-      this.returnsHistory.push(r);
-      if(this.returnsHistory.length>500)this.returnsHistory.shift();
-    }
-    renderPositions(); updateStats(); drawCharts();
-  },
-
-  runResearch:function(){
-    if(!this.running)return;
-    this.signals=[];
-    for(var i=0;i<KALSHI_MARKETS.length;i++){
-      var m=KALSHI_MARKETS[i],price=this.marketPrices[m.id],hist=this.priceHistory[m.id];
-      var ma20=hist.slice(-20).reduce(function(a,b){return a+b},0)/Math.min(20,hist.length);
-      var mr=(ma20-price)/ma20;
-      var m5=hist.length>=5?(price-hist[hist.length-5])/hist[hist.length-5]:0;
-      var m20=hist.length>=20?(price-hist[hist.length-20])/hist[hist.length-20]:0;
-      var mom=m5*.6+m20*.4;
-      var edge=mr*25+mom*15;
-      var absE=Math.abs(edge);
-      var conf=Math.min(95,Math.round(30+absE*20+Math.min(1,m.vol/8e6)*10));
-      var odds=price/(100-price);
-      var kl=kellySize(conf,odds+1,this.cfg.kellyFrac);
-      var act='HOLD';
-      if(edge>3&&conf>60)act='BUY YES'; else if(edge<-3&&conf>60)act='BUY NO'; else if(edge>1.5)act='LEAN YES'; else if(edge<-1.5)act='LEAN NO';
-      this.signals.push({marketId:m.id,question:m.q,category:m.cat,price:Math.round(price*10)/10,edge:Math.round(edge*100)/100,confidence:conf,kelly:Math.round(kl*100),action:act});
-    }
-    addLog('Scan: '+this.signals.length+' signals','research');
-  },
-
-  runTrades:function(){
-    if(!this.running||this.positions.length>=this.cfg.concurrent)return;
-    var act=this.signals.filter(function(s){return s.confidence>=55&&Math.abs(s.edge)>2}).sort(function(a,b){return Math.abs(b.edge)-Math.abs(a.edge)});
-    if(!act.length)return;
-    var best=act[0];
-    if(this.positions.find(function(p){return p.marketId===best.marketId}))return;
-    var strat=best.edge>0?'momentum':'meanrevert';
-    var size=30+Math.round(Math.random()*20); // $30-$50
-    size=Math.max(30,Math.min(50,size));
-    var side=best.action.includes('NO')?'NO':'YES';
-    var price=best.price;
-    // size is in dollars; convert to contracts at the entry price
-    var contracts=Math.max(1,Math.floor(size/(price/100)));
-
-    if(this.mode==='live'){
-      // ===== REAL ORDER VIA /api/order =====
-      var self=this;
-      addLog('[LIVE] Submitting '+side+' '+contracts+'x '+best.marketId+' @ '+price+'c','live');
-      fetch('/api/order',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({market:best.marketId,side:side.toLowerCase(),price:price,size:contracts})
-      }).then(function(r){return r.json()}).then(function(d){
-        if(d.ok){
-          self.liveOrderCount++;
-          self.positions.push({id:self.nextPosId++,source:'live',marketId:best.marketId,question:best.question,side:side,entry:price,current:price,size:contracts,pnl:0,strategy:strat,timestamp:Date.now(),status:'submitted',orderId:d.order&&d.order.order_id});
-          self.tradeCount++;
-          addLog('[LIVE OK] Order accepted: '+(d.order&&d.order.order_id||'id?'),'live');
-          showToast('LIVE order filled: '+best.marketId,'success');
-          renderPositions(); updateStats();
-        } else {
-          addLog('[LIVE FAIL] '+(d.error||JSON.stringify(d.detail||'')),'risk');
-          showToast('Order rejected: '+(d.error||'see log'),'error');
-        }
-      }).catch(function(e){
-        addLog('[LIVE ERR] '+e.message,'risk');
-        showToast('Network error: '+e.message,'error');
-      });
-    } else {
-      // ===== PAPER ORDER =====
-      this.positions.push({id:this.nextPosId++,source:'paper',marketId:best.marketId,question:best.question,side:side,entry:price,current:price,size:contracts,pnl:0,strategy:strat,timestamp:Date.now(),status:'simulated'});
-      this.tradeCount++;
-      addLog('[PAPER] '+side+' '+contracts+'x "'+best.question.substring(0,24)+'" @ '+price+'c ($'+(price*contracts/100).toFixed(2)+')',side==='YES'?'buy':'sell');
-      showToast('Paper trade: '+side+' '+best.marketId,'success');
-      renderPositions(); updateStats();
-    }
-  },
-
-  runRisk:function(){
-    if(!this.running)return;
-    var tc=[];
-    for(var i=0;i<this.positions.length;i++){
-      var pos=this.positions[i];
-      if(pos.source==='live')continue; // don't auto-close live positions
-      var pp=Math.abs(pos.pnl)/Math.max(1,pos.size)*100;
-      if(pos.pnl<0&&pp>=this.cfg.sl)tc.push({pos:pos,reason:'stop-loss'});
-      else if(pos.pnl>0&&pp>=this.cfg.tp)tc.push({pos:pos,reason:'take-profit'});
-    }
-    for(var j=0;j<tc.length;j++)this.closePos(tc[j].pos.id,tc[j].reason);
-    var eq=this.portfolioValue+this.positions.reduce(function(s,p){return s+p.pnl},0);
-    var dd=this.peakEquity>0?(this.peakEquity-eq)/this.peakEquity*100:0;
-    if(dd>20&&this.running){addLog('RISK ALERT: DD '+dd.toFixed(1)+'%','risk');showToast('Risk: '+dd.toFixed(1)+'% drawdown','error')}
-  },
-
-  closePos:function(pid,reason){
-    if(!reason)reason='manual';
-    var idx=-1;
-    for(var i=0;i<this.positions.length;i++){if(this.positions[i].id===pid){idx=i;break}}
-    if(idx===-1)return;
-    var pos=this.positions[idx];
-    this.positions.splice(idx,1);
-    this.closedTrades.push(pos);
-    if(pos.source==='paper'){this.portfolioValue+=pos.size+pos.pnl}
-    if(pos.pnl>0)this.wins++;else this.losses++;
-    this.stratPnL[pos.strategy]=(this.stratPnL[pos.strategy]||0)+pos.pnl;
-    addLog('['+reason.toUpperCase()+'] '+pos.side+' "'+pos.question.substring(0,20)+'" '+fmtPnl(pos.pnl),pos.pnl>=0?'buy':'sell');
-    showToast('Closed: '+fmtPnl(pos.pnl),pos.pnl>=0?'success':'error');
-    renderPositions(); updateStats();
-  },
-
-  closeAll:function(){var self=this;var copy=[].concat(this.positions).filter(function(p){return p.source==='paper'});copy.forEach(function(p){self.closePos(p.id,'close-all')})},
-
-  updateBayesian:function(){if(!this.running)return;for(var i=0;i<KALSHI_MARKETS.length;i++){var m=KALSHI_MARKETS[i],bs=this.bayesianState[m.id],price=this.marketPrices[m.id];var r=Math.random()<price/100?1:0;bs.observations++;bs.successes+=r;var u=bayesianUpdate(bs.alpha,bs.beta,1,r);bs.alpha=u.alpha;bs.beta=u.beta}renderBayesian()},
-
-  simFlow:function(){if(!this.running)return;var now=Date.now();for(var i=0;i<3+Math.floor(Math.random()*5);i++){var m=KALSHI_MARKETS[Math.floor(Math.random()*KALSHI_MARKETS.length)];this.orderFlow.push({time:now,marketId:m.id,question:m.q,side:Math.random()>.45?'BUY':'SELL',size:Math.floor(10+Math.random()*200),price:this.marketPrices[m.id]})}if(this.orderFlow.length>200)this.orderFlow=this.orderFlow.slice(-200)}
+var brain={
+  running:false, mode:'paper', pipeline:'idle',
+  // Investment tracking
+  investmentCap:50, cashAvailable:50, portfolioValue:0, startingCapital:0,
+  // Positions
+  positions:[], closedTrades:[], nextPosId:1, tradeCount:0, wins:0, losses:0,
+  liveOrderCount:0, autoTradeCount:0, maxDrawdown:0, peakEquity:0,
+  // Research
+  markets:[], marketHistory:{}, candidates:[], lastScan:null, scanCount:0,
+  // Decisions
+  decisions:[], execQueue:[],
+  // Active strategies
+  activeStrats:new Set(['momentum','mean-revert','bayesian','volume']),
+  // Config
+  cfg:{maxPos:35,concurrent:1,sl:15,tp:30,scanMs:30000,minConf:60},
+  timers:[],
+  equityHistory:[0]
 };
 
 // ===========================================================================
 // Math helpers
 // ===========================================================================
 function randn(){var u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)}
-function stdDev(a){var m=a.reduce(function(x,y){return x+y},0)/a.length;return Math.sqrt(a.reduce(function(s,v){return s+(v-m)*(v-m)},0)/a.length)}
+function stdDev(a){if(a.length<2)return 0;var m=a.reduce(function(x,y){return x+y},0)/a.length;return Math.sqrt(a.reduce(function(s,v){return s+(v-m)*(v-m)},0)/(a.length-1))}
 function kellySize(winPct,odds,frac){if(!frac)frac=.5;var p=winPct/100,b=odds-1;if(b<=0)return 0;var f=(p*b-(1-p))/b;return Math.max(0,f*frac)}
-function bayesianUpdate(a,b,n,s){return{alpha:a+s,beta:b+n-s}}
 function fmtPnl(v){return(v>=0?'+':'-')+'$'+Math.abs(v).toFixed(2)}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+
+// ===========================================================================
+// Pipeline visualizer
+// ===========================================================================
+function setPipelineStage(stage){
+  var stages=['research','score','risk','decide','execute'];
+  var idx=stages.indexOf(stage);
+  for(var i=0;i<stages.length;i++){
+    var el=document.getElementById('stage-'+stages[i]);
+    el.classList.remove('active','done');
+    if(i<idx)el.classList.add('done');
+    else if(i===idx)el.classList.add('active');
+  }
+  brain.pipeline=stage;
+  var stateEl=document.getElementById('brain-state');
+  var subEl=document.getElementById('brain-sub');
+  var map={research:['RESEARCHING','Fetching live Kalshi markets...'],
+    score:['SCORING','Computing Bayesian edge + momentum + volume...'],
+    risk:['RISK CHECK','Running budget / slots / drawdown gates...'],
+    decide:['DECIDING','Selecting top candidate...'],
+    execute:['EXECUTING',brain.mode==='live'?'POSTing real order to Kalshi':'Logging paper trade...'],
+    idle:['IDLE','Press Start AI Brain to begin'],
+    done:['CYCLE COMPLETE','Waiting for next scan interval...']};
+  var m=map[stage]||map.idle;
+  stateEl.textContent=m[0];
+  subEl.textContent=m[1];
+  document.getElementById('h-brain').textContent=m[0];
+}
+
+// ===========================================================================
+// RESEARCH: Fetch live Kalshi markets
+// ===========================================================================
+function brainResearch(){
+  setPipelineStage('research');
+  addLog('[BRAIN] Research: fetching live Kalshi markets...','research');
+  return fetch('/api/proxy?endpoint='+encodeURIComponent('markets?status=open&limit=50'))
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var markets=(d.markets||[]).map(function(m){
+        var yesAsk=m.yes_ask?Math.round(m.yes_ask):null;
+        var yesBid=m.yes_bid?Math.round(m.yes_bid):null;
+        var price=yesAsk||yesBid||Math.round((m.last_price||50)*100)||50;
+        return {
+          id:m.ticker, q:m.title||m.subtitle||m.ticker, cat:m.category||'other',
+          price:price, yesBid:yesBid, yesAsk:yesAsk,
+          vol:parseInt(m.volume||0), liq:parseInt(m.open_interest||0)
+        };
+      }).filter(function(m){return m.vol>0}); // only trade liquid markets
+      if(!markets.length){
+        addLog('[BRAIN] No live markets returned — using fallback list','research');
+        markets=FALLBACK_MARKETS.map(function(m){return{id:m.id,q:m.q,cat:m.cat,price:m.base,yesBid:m.base-1,yesAsk:m.base+1,vol:m.vol,liq:Math.floor(m.vol/10)}});
+      }
+      brain.markets=markets;
+      brain.scanCount++;
+      brain.lastScan=new Date();
+      addLog('[BRAIN] Research complete: '+markets.length+' liquid markets found','research');
+      return markets;
+    })
+    .catch(function(e){
+      addLog('[BRAIN] Research failed: '+e.message+' — using fallback','risk');
+      var markets=FALLBACK_MARKETS.map(function(m){return{id:m.id,q:m.q,cat:m.cat,price:m.base,yesBid:m.base-1,yesAsk:m.base+1,vol:m.vol,liq:Math.floor(m.vol/10)}});
+      brain.markets=markets; brain.scanCount++; brain.lastScan=new Date();
+      return markets;
+    });
+}
+
+// ===========================================================================
+// SCORE: Compute Bayesian edge + momentum + volume for each market
+// ===========================================================================
+function brainScore(markets){
+  setPipelineStage('score');
+  addLog('[BRAIN] Scoring '+markets.length+' markets...','research');
+  var candidates=[];
+
+  for(var i=0;i<markets.length;i++){
+    var m=markets[i];
+
+    // Update price history
+    if(!brain.marketHistory[m.id])brain.marketHistory[m.id]=[];
+    brain.marketHistory[m.id].push(m.price);
+    if(brain.marketHistory[m.id].length>30)brain.marketHistory[m.id].shift();
+    var hist=brain.marketHistory[m.id];
+
+    // 1. Momentum (recent price direction)
+    var mom=0;
+    if(hist.length>=5){
+      var recent=hist.slice(-5);
+      mom=(recent[recent.length-1]-recent[0])/recent[0];
+    }
+
+    // 2. Mean reversion (distance from 20-period MA)
+    var ma20=hist.length>=10?hist.slice(-20).reduce(function(a,b){return a+b},0)/Math.min(20,hist.length):m.price;
+    var mr=(ma20-m.price)/Math.max(1,m.price);
+
+    // 3. Bayesian posterior (simple Beta-Binomial: prior=Beta(2,2), updates with random obs)
+    //    Edge = posterior_mean - market_price
+    //    For a fresh market (no history), edge is small.
+    var bm=0.5+(m.price-50)/100*0.3; // anchor: price implies prob
+    if(hist.length>=10){
+      // observed "successes" = how often price went up
+      var ups=0;
+      for(var j=1;j<hist.length;j++)if(hist[j]>hist[j-1])ups++;
+      var total=hist.length-1;
+      bm=(2+ups)/(4+total); // Beta(2,2) updated
+    }
+    var bayesEdge=bm-m.price/100;
+
+    // 4. Volume score (0-1)
+    var volScore=Math.min(1,m.vol/1e7);
+
+    // Composite signal (weighted sum)
+    var signal=mom*0.4+mr*0.3+bayesEdge*0.3;
+    // Confidence: based on history length and volume
+    var confidence=clamp(30+Math.abs(signal)*200+volScore*20+Math.min(40,hist.length*1.5),0,95);
+    // Action
+    var action='HOLD';
+    if(signal>0.03&&confidence>=brain.cfg.minConf)action='BUY YES';
+    else if(signal<-0.03&&confidence>=brain.cfg.minConf)action='BUY NO';
+    else if(signal>0.015)action='LEAN YES';
+    else if(signal<-0.015)action='LEAN NO';
+
+    candidates.push({
+      marketId:m.id, question:m.q, category:m.cat,
+      price:m.price, yesBid:m.yesBid, yesAsk:m.yesAsk,
+      momentum:Math.round(mom*1000)/10,
+      meanRev:Math.round(mr*1000)/10,
+      bayesEdge:Math.round(bayesEdge*1000)/10,
+      volume:volScore,
+      signal:Math.round(signal*1000)/10,
+      confidence:Math.round(confidence),
+      action:action,
+      vol:m.vol
+    });
+  }
+
+  // Rank by |signal| × confidence
+  candidates.sort(function(a,b){
+    return Math.abs(b.signal)*b.confidence-Math.abs(a.signal)*a.confidence;
+  });
+  brain.candidates=candidates.slice(0,10); // keep top 10
+  addLog('[BRAIN] Scoring complete: '+candidates.filter(function(c){return c.action.includes('BUY')}).length+' actionable signals','research');
+  renderCandidates();
+  return brain.candidates;
+}
+
+// ===========================================================================
+// RISK CHECK: Run all gates on the top candidate
+// ===========================================================================
+function brainRiskCheck(candidate){
+  setPipelineStage('risk');
+  var checks=[];
+
+  // 1. Confidence gate
+  var confPass=candidate.confidence>=brain.cfg.minConf;
+  checks.push({name:'Confidence ≥ '+brain.cfg.minConf+'%',pass:confPass,detail:'Got '+candidate.confidence+'%'});
+
+  // 2. Actionable signal (BUY YES or BUY NO, not HOLD/LEAN)
+  var actPass=candidate.action.includes('BUY');
+  checks.push({name:'Actionable signal (BUY)',pass:actPass,detail:'Action: '+candidate.action});
+
+  // 3. Budget: cashAvailable >= 30 (min order)
+  var budgetPass=brain.cashAvailable>=30;
+  checks.push({name:'Budget: cash ≥ $30',pass:budgetPass,detail:'Cash: $'+brain.cashAvailable.toFixed(2)});
+
+  // 4. Slots: open positions < max_concurrent
+  var slotsPass=brain.positions.length<brain.cfg.concurrent;
+  checks.push({name:'Slot available ('+brain.positions.length+'/'+brain.cfg.concurrent+')',pass:slotsPass,detail:slotsPass?'Open':'Full'});
+
+  // 5. No duplicate position on this market
+  var dupPass=!brain.positions.find(function(p){return p.marketId===candidate.marketId});
+  checks.push({name:'No existing position on '+candidate.marketId,pass:dupPass,detail:dupPass?'Clean':'Already in'});
+
+  // 6. Drawdown acceptable
+  var ddPass=brain.maxDrawdown<20;
+  checks.push({name:'Drawdown < 20%',pass:ddPass,detail:'Current DD: '+brain.maxDrawdown.toFixed(1)+'%'});
+
+  // 7. Order notional will be in $30-40 (compute target size)
+  //    target = $35; contracts = floor(35 * 100 / price); verify notional = price * contracts / 100
+  var targetNotional=brain.cfg.maxPos; // $35 default
+  var contracts=Math.floor(targetNotional*100/Math.max(1,candidate.price));
+  var actualNotional=candidate.price*contracts/100;
+  var capPass=actualNotional>=30&&actualNotional<=40;
+  checks.push({name:'Notional $30-40 (computed $'+actualNotional.toFixed(2)+')',pass:capPass,detail:'Price '+candidate.price+'c × '+contracts+' contracts = $'+actualNotional.toFixed(2)});
+
+  // If notional is out of range, try to adjust contracts
+  if(!capPass){
+    if(actualNotional<30){
+      contracts=Math.ceil(30*100/Math.max(1,candidate.price));
+      actualNotional=candidate.price*contracts/100;
+      capPass=actualNotional>=30&&actualNotional<=40;
+      checks[6].detail='Adjusted to '+contracts+' contracts = $'+actualNotional.toFixed(2);
+      checks[6].pass=capPass;
+    }
+  }
+
+  candidate.contracts=contracts;
+  candidate.notional=actualNotional;
+
+  var allPass=checks.every(function(c){return c.pass});
+  addLog('[BRAIN] Risk check on '+candidate.marketId+': '+(allPass?'ALL PASS':'FAILED — '+(checks.filter(function(c){return !c.pass}).map(function(c){return c.name}).join(', '))),'risk');
+  renderRiskCheck(checks, candidate);
+  return {pass:allPass, checks:checks, candidate:candidate};
+}
+
+// ===========================================================================
+// DECIDE: Pick top candidate and decide TRADE/HOLD/SKIP
+// ===========================================================================
+function brainDecide(candidates){
+  setPipelineStage('decide');
+  if(!candidates.length){
+    brainLogDecision('SKIP','No candidates from scoring','—');
+    return null;
+  }
+  // Filter to actionable signals
+  var actionable=candidates.filter(function(c){return c.action.includes('BUY')});
+  if(!actionable.length){
+    brainLogDecision('HOLD','No actionable BUY signals (all HOLD/LEAN)','Top candidate: '+candidates[0].marketId+' '+candidates[0].action);
+    return null;
+  }
+  var top=actionable[0];
+  var risk=brainRiskCheck(top);
+  if(risk.pass){
+    brainLogDecision('TRADE',top.action+' '+top.marketId+' @ '+top.price+'c ('+top.contracts+' contracts, $'+top.notional.toFixed(2)+')',
+      'Signal '+top.signal+' | Conf '+top.confidence+'% | Momentum '+top.momentum+' | Bayes '+top.bayesEdge);
+    return risk.candidate;
+  } else {
+    var failed=risk.checks.filter(function(c){return !c.pass}).map(function(c){return c.name}).join('; ');
+    brainLogDecision('SKIP','Risk gates failed: '+failed,'Candidate was '+top.marketId);
+    return null;
+  }
+}
+
+// ===========================================================================
+// EXECUTE: POST to /api/order (live) or log (paper)
+// ===========================================================================
+function brainExecute(candidate){
+  setPipelineStage('execute');
+  if(!candidate){setPipelineStage('idle');return}
+
+  var side=candidate.action==='BUY YES'?'yes':'no';
+  var price=candidate.price;
+  var size=candidate.contracts;
+
+  if(brain.mode==='live'){
+    addLog('[BRAIN-LIVE] Submitting '+side.toUpperCase()+' '+size+'x '+candidate.marketId+' @ '+price+'c ($'+candidate.notional.toFixed(2)+')','live');
+    fetch('/api/order',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({market:candidate.marketId,side:side,price:price,size:size})
+    })
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(d.ok){
+          brain.liveOrderCount++;
+          brain.autoTradeCount++;
+          brain.positions.push({
+            id:brain.nextPosId++, source:'live', auto:true,
+            marketId:candidate.marketId, question:candidate.question,
+            side:candidate.action==='BUY YES'?'YES':'NO',
+            entry:price, current:price, size:size,
+            pnl:0, strategy:'ai-brain', timestamp:Date.now(),
+            status:'submitted', orderId:d.order&&d.order.order_id
+          });
+          brain.tradeCount++;
+          brain.cashAvailable-=candidate.notional;
+          addLog('[BRAIN-LIVE OK] Order accepted: '+(d.order&&d.order.order_id||'(no id)'),'live');
+          showToast('AI Brain LIVE order filled: '+candidate.marketId,'success');
+          renderPositions(); updateStats();
+        } else {
+          addLog('[BRAIN-LIVE FAIL] '+(d.error||JSON.stringify(d.detail||'')),'risk');
+          showToast('AI Brain order rejected: '+(d.error||'see log'),'error');
+        }
+        setPipelineStage('done');
+        setTimeout(function(){if(brain.running)setPipelineStage('idle')},2000);
+      })
+      .catch(function(e){
+        addLog('[BRAIN-LIVE ERR] '+e.message,'risk');
+        showToast('AI Brain network error: '+e.message,'error');
+        setPipelineStage('idle');
+      });
+  } else {
+    // Paper trade
+    brain.positions.push({
+      id:brain.nextPosId++, source:'paper', auto:true,
+      marketId:candidate.marketId, question:candidate.question,
+      side:candidate.action==='BUY YES'?'YES':'NO',
+      entry:price, current:price, size:size,
+      pnl:0, strategy:'ai-brain', timestamp:Date.now(),
+      status:'simulated'
+    });
+    brain.tradeCount++;
+    brain.autoTradeCount++;
+    brain.cashAvailable-=candidate.notional;
+    addLog('[BRAIN-PAPER] '+candidate.action+' '+size+'x '+candidate.marketId+' @ '+price+'c ($'+candidate.notional.toFixed(2)+')','decision');
+    showToast('AI Brain paper trade: '+candidate.action+' '+candidate.marketId,'success');
+    renderPositions(); updateStats();
+    setPipelineStage('done');
+    setTimeout(function(){if(brain.running)setPipelineStage('idle')},2000);
+  }
+}
+
+// ===========================================================================
+// Decision log
+// ===========================================================================
+function brainLogDecision(decision, reason, detail){
+  var entry={time:new Date(),decision:decision,reason:reason,detail:detail};
+  brain.decisions.unshift(entry);
+  if(brain.decisions.length>30)brain.decisions.pop();
+  renderDecisions();
+  var cls=decision==='TRADE'?'decision':decision==='HOLD'?'research':'risk';
+  addLog('[DECISION] '+decision+' — '+reason+(detail?' | '+detail:''),cls);
+}
+
+// ===========================================================================
+// Run one full brain cycle
+// ===========================================================================
+function brainCycle(){
+  if(!brain.running)return;
+  brainResearch()
+    .then(function(markets){return brainScore(markets)})
+    .then(function(candidates){var c=brainDecide(candidates);if(c)brainExecute(c);else{setPipelineStage('idle')}})
+    .catch(function(e){addLog('[BRAIN] Cycle error: '+e.message,'risk');setPipelineStage('idle')});
+}
+
+// ===========================================================================
+// Position management — check SL/TP for paper positions
+// ===========================================================================
+function managePositions(){
+  if(!brain.running)return;
+  // Simulate price drift for paper positions (real positions get updated via /api/balance sync)
+  for(var i=0;i<brain.positions.length;i++){
+    var p=brain.positions[i];
+    if(p.source==='paper'){
+      // Random walk
+      p.current=Math.max(1,Math.min(99,p.current+(Math.random()-.5)*1.5));
+      var d=p.side==='YES'?(p.current-p.entry):(p.entry-p.current);
+      p.pnl=Math.round(d/100*p.size*100)/100;
+    }
+  }
+  // SL/TP only on paper positions (don't auto-close live)
+  var tc=[];
+  for(var j=0;j<brain.positions.length;j++){
+    var pos=brain.positions[j];
+    if(pos.source==='live')continue;
+    var pp=Math.abs(pos.pnl)/Math.max(1,pos.size)*100;
+    if(pos.pnl<0&&pp>=brain.cfg.sl)tc.push({pos:pos,reason:'stop-loss'});
+    else if(pos.pnl>0&&pp>=brain.cfg.tp)tc.push({pos:pos,reason:'take-profit'});
+  }
+  for(var k=0;k<tc.length;k++)closePos(tc[k].pos.id,tc[k].reason);
+  // Update equity
+  var tp=brain.positions.reduce(function(s,p){return s+p.pnl},0);
+  var eq=brain.portfolioValue+tp;
+  brain.equityHistory.push(eq);
+  if(brain.equityHistory.length>200)brain.equityHistory.shift();
+  if(eq>brain.peakEquity)brain.peakEquity=eq;
+  if(brain.peakEquity>0)brain.maxDrawdown=Math.max(brain.maxDrawdown,(brain.peakEquity-eq)/brain.peakEquity*100);
+  renderPositions(); updateStats(); drawCharts();
+}
+
+function closePos(pid, reason){
+  if(!reason)reason='manual';
+  var idx=-1;
+  for(var i=0;i<brain.positions.length;i++){if(brain.positions[i].id===pid){idx=i;break}}
+  if(idx===-1)return;
+  var pos=brain.positions[idx];
+  brain.positions.splice(idx,1);
+  brain.closedTrades.push(pos);
+  if(pos.source==='paper'){
+    brain.portfolioValue+=pos.size/100*pos.entry+pos.pnl; // return cost + pnl
+    brain.cashAvailable+=pos.size/100*pos.entry+pos.pnl;
+  }
+  if(pos.pnl>0)brain.wins++;else brain.losses++;
+  addLog('['+reason.toUpperCase()+'] '+pos.side+' '+pos.marketId+' '+fmtPnl(pos.pnl),pos.pnl>=0?'buy':'sell');
+  showToast('Closed: '+fmtPnl(pos.pnl),pos.pnl>=0?'success':'error');
+  renderPositions(); updateStats();
+}
 
 // ===========================================================================
 // Renderers
 // ===========================================================================
 function updateStats(){
-  var tp=bot.positions.reduce(function(s,p){return s+p.pnl},0)+(bot.portfolioValue-bot.startingCapital);
-  var eq=bot.portfolioValue+bot.positions.reduce(function(s,p){return s+p.pnl},0);
-  var wr=(bot.wins+bot.losses)>0?(bot.wins/(bot.wins+bot.losses)*100):0;
-  var ka=bot.signals.length?bot.signals.reduce(function(s,sig){return s+sig.kelly},0)/bot.signals.length:0;
-  var exp=bot.positions.reduce(function(s,p){return s+p.size},0);
-  var v95=bot.returnsHistory.length>20?Math.abs(calcVaR(bot.returnsHistory,.95)*eq):0;
-  var sh=bot.returnsHistory.length>10?(bot.returnsHistory.reduce(function(a,b){return a+b},0)/bot.returnsHistory.length)/(Math.max(.001,stdDev(bot.returnsHistory))*Math.sqrt(252)):0;
-  document.getElementById('h-pv').textContent='$'+Math.round(eq).toLocaleString();
-  var pe=document.getElementById('h-pnl');pe.textContent=fmtPnl(tp);pe.style.color=tp>=0?'var(--accent)':'var(--danger)';
-  document.getElementById('h-pos').textContent=bot.positions.length;
-  document.getElementById('h-kelly').textContent=ka.toFixed(1)+'%';
-  document.getElementById('s-pv').textContent='$'+Math.round(eq).toLocaleString();
+  var tp=brain.positions.reduce(function(s,p){return s+p.pnl},0)+(brain.portfolioValue-brain.startingCapital);
+  var eq=brain.portfolioValue+tp;
+  var wr=(brain.wins+brain.losses)>0?(brain.wins/(brain.wins+brain.losses)*100):0;
+  var exp=brain.positions.reduce(function(s,p){return s+p.notional||(p.size/100*p.entry)},0);
+  document.getElementById('h-pv').textContent='$'+brain.investmentCap.toFixed(0);
+  document.getElementById('h-pnl').textContent=fmtPnl(tp);
+  document.getElementById('h-pnl').style.color=tp>=0?'var(--accent)':'var(--danger)';
+  document.getElementById('h-pos').textContent=brain.positions.length;
+  document.getElementById('s-pv').textContent='$'+brain.investmentCap.toFixed(0);
   var ps=document.getElementById('s-pnl');ps.textContent=fmtPnl(tp);ps.style.color=tp>=0?'var(--accent)':'var(--danger)';
-  document.getElementById('s-wr').textContent=wr.toFixed(1)+'%';
-  document.getElementById('s-sr').textContent=sh.toFixed(2);
-  document.getElementById('s-tt').textContent=bot.tradeCount;
-  document.getElementById('s-live').textContent=bot.liveOrderCount;
-  document.getElementById('s-var').textContent='$'+Math.round(v95).toLocaleString();
-  document.getElementById('s-dd').textContent='-'+bot.maxDrawdown.toFixed(1)+'%';
-  document.getElementById('s-kelly').textContent=ka.toFixed(1)+'%';
-  document.getElementById('s-exp').textContent='$'+exp.toLocaleString();
-  document.getElementById('risk-conc').textContent=bot.cfg.concurrent;
-  document.getElementById('risk-sl').textContent=bot.cfg.sl+'%';
-  document.getElementById('risk-tp').textContent=bot.cfg.tp+'%';
-  document.getElementById('risk-exp').textContent='$'+exp.toLocaleString();
+  document.getElementById('s-wr').textContent=wr.toFixed(0)+'%';
+  document.getElementById('s-tt').textContent=brain.tradeCount;
+  document.getElementById('s-live').textContent=brain.liveOrderCount;
+  document.getElementById('s-auto').textContent=brain.autoTradeCount;
+  document.getElementById('s-scans').textContent=brain.scanCount;
+  document.getElementById('s-mkts').textContent=brain.markets.length;
+  document.getElementById('s-exp').textContent='$'+exp.toFixed(2);
+  document.getElementById('s-cash').textContent='$'+brain.cashAvailable.toFixed(2);
+  document.getElementById('risk-invest').textContent='$'+brain.investmentCap.toFixed(0);
+  document.getElementById('risk-conc').textContent=brain.cfg.concurrent;
+  document.getElementById('risk-sl').textContent=brain.cfg.sl+'%';
+  document.getElementById('risk-tp').textContent=brain.cfg.tp+'%';
+  document.getElementById('risk-exp').textContent='$'+exp.toFixed(2);
+  document.getElementById('risk-cash').textContent='$'+brain.cashAvailable.toFixed(2);
+  document.getElementById('risk-dd').textContent='-'+brain.maxDrawdown.toFixed(1)+'%';
 }
-function calcVaR(ret,conf){if(!conf)conf=.95;var s=[].concat(ret).sort(function(a,b){return a-b});return s[Math.floor(s.length*(1-conf))]}
+
+function renderCandidates(){
+  var el=document.getElementById('brain-candidates');
+  if(!brain.candidates.length){el.innerHTML='<p class="text-[9px]" style="color:var(--muted);padding:8px">No candidates yet.</p>';return}
+  var html='';
+  for(var i=0;i<Math.min(5,brain.candidates.length);i++){
+    var c=brain.candidates[i];
+    var cc=CATC[c.category]||'#8fa698';
+    var actColor=c.action.includes('BUY')?(c.action==='BUY YES'?'var(--accent)':'var(--danger)'):'var(--muted)';
+    html+='<div class="p-2 mb-1 rounded" style="background:var(--surface);border-left:2px solid '+cc+'">'+
+      '<div class="flex justify-between mb-1"><span class="mono text-[9px]">'+c.marketId+'</span><span class="text-[8px]" style="color:'+actColor+';font-weight:700">'+c.action+'</span></div>'+
+      '<div class="text-[8px] mb-1" style="color:var(--dim)">'+c.question.substring(0,40)+'</div>'+
+      '<div class="flex justify-between text-[8px] mono" style="color:var(--muted)">'+
+        '<span>Price: '+c.price+'c</span>'+
+        '<span>Signal: '+c.signal+'</span>'+
+        '<span>Conf: '+c.confidence+'%</span>'+
+        '<span>Vol: '+(c.volume*100).toFixed(0)+'%</span>'+
+      '</div></div>';
+  }
+  el.innerHTML=html;
+}
+
+function renderRiskCheck(checks, candidate){
+  var el=document.getElementById('brain-risk');
+  var html='<div class="text-[9px] mb-2" style="color:var(--dim)">Candidate: <span class="mono" style="color:var(--accent)">'+candidate.marketId+'</span> · '+candidate.action+'</div>';
+  for(var i=0;i<checks.length;i++){
+    var c=checks[i];
+    html+='<div class="risk-row '+(c.pass?'pass':'fail')+'">'+
+      '<span><i class="fas fa-'+(c.pass?'check':'times')+'-circle" style="color:'+(c.pass?'var(--accent)':'var(--danger)')+';margin-right:6px"></i>'+c.name+'</span>'+
+      '<span class="mono text-[8px]" style="color:var(--muted)">'+c.detail+'</span>'+
+    '</div>';
+  }
+  el.innerHTML=html;
+}
+
+function renderDecisions(){
+  var el=document.getElementById('brain-decisions');
+  if(!brain.decisions.length){el.innerHTML='<p class="text-[9px]" style="color:var(--muted);padding:8px">No decisions yet.</p>';return}
+  var html='';
+  for(var i=0;i<Math.min(15,brain.decisions.length);i++){
+    var d=brain.decisions[i];
+    var t=d.time.toLocaleTimeString('en-US',{hour12:false});
+    var color=d.decision==='TRADE'?'var(--accent)':d.decision==='HOLD'?'var(--gold)':'var(--danger)';
+    var bg=d.decision==='TRADE'?'rgba(0,232,123,.04)':'transparent';
+    html+='<div class="log-e decision" style="border-left-color:'+color+';background:'+bg+'">'+
+      '<span style="color:var(--muted)">'+t+'</span> <b style="color:'+color+'">'+d.decision+'</b> — '+d.reason+
+      (d.detail&&d.detail!=='—'?'<br><span style="color:var(--muted);padding-left:8px">'+d.detail+'</span>':'')+
+    '</div>';
+  }
+  el.innerHTML=html;
+}
 
 function renderPositions(){
   var b=document.getElementById('pos-body');b.innerHTML='';
-  if(!bot.positions.length){b.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">No active positions. Start the bot or submit a manual order.</td></tr>';return}
-  for(var i=0;i<bot.positions.length;i++){
-    var p=bot.positions[i];
+  if(!brain.positions.length){b.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">No active positions. Start the AI Brain to begin.</td></tr>';return}
+  for(var i=0;i<brain.positions.length;i++){
+    var p=brain.positions[i];
     var srcBadge=p.source==='live'?'<span class="badge badge-gold">LIVE</span>':'<span class="badge badge-cyan">PAPER</span>';
+    var autoBadge=p.auto?'<span class="badge badge-purple">AUTO</span>':'<span class="badge" style="background:var(--surface);color:var(--dim)">MANUAL</span>';
     var statusBadge=p.status==='submitted'?'<span class="badge badge-gold">SUBMITTED</span>':p.status==='simulated'?'<span class="badge badge-cyan">SIM</span>':'<span class="badge badge-green">OPEN</span>';
     var tr=document.createElement('tr');
-    tr.innerHTML='<td>'+srcBadge+'</td><td class="mono text-[9px]">'+p.marketId+'</td><td>'+(p.side==='YES'?'<span style="color:var(--accent)">YES</span>':'<span style="color:var(--danger)">NO</span>')+'</td><td class="mono">'+p.entry+'c</td><td class="mono">'+p.current+'c</td><td class="mono">'+p.size+'</td><td class="mono" style="color:'+(p.pnl>=0?'var(--accent)':'var(--danger)')+'">'+fmtPnl(p.pnl)+'</td><td>'+p.strategy+'</td><td>'+statusBadge+'</td>';
+    tr.innerHTML='<td>'+srcBadge+' '+autoBadge+'</td><td class="mono text-[9px]">'+p.marketId+'</td><td>'+(p.side==='YES'?'<span style="color:var(--accent)">YES</span>':'<span style="color:var(--danger)">NO</span>')+'</td><td class="mono">'+p.entry+'c</td><td class="mono">'+p.current+'c</td><td class="mono">'+p.size+'</td><td class="mono" style="color:'+(p.pnl>=0?'var(--accent)':'var(--danger)')+'">'+fmtPnl(p.pnl)+'</td><td>'+p.strategy+'</td><td>'+statusBadge+'</td>';
     b.appendChild(tr);
   }
 }
 
-function renderBayesian(){/* panel can be extended */}
-function renderResearch(){/* signals handled internally */}
+function renderExecQueue(){
+  var q=document.getElementById('ex-queue');
+  if(!brain.execQueue.length){q.innerHTML='<p style="color:var(--muted);font-size:9px;padding:8px">No orders submitted yet</p>';return}
+  q.innerHTML='';
+  for(var i=0;i<brain.execQueue.length;i++){
+    var e=brain.execQueue[i];
+    var isOk=e.status==='ACCEPTED';
+    var div=document.createElement('div');
+    div.className='p-2 mb-1 rounded';
+    div.style.background='var(--surface)';
+    div.style.borderLeft='2px solid '+(isOk?'var(--accent)':'var(--danger)');
+    div.innerHTML='<div class="flex justify-between mb-1"><span class="mono text-[9px]">'+e.market+'</span><span class="text-[8px]" style="color:var(--muted)">'+e.time+'</span></div><div class="flex justify-between text-[9px]"><span>'+e.side+' '+e.size+'x @ '+e.price+'c</span><span class="mono" style="color:'+(isOk?'var(--accent)':'var(--danger)')+'">'+e.status+'</span></div><div class="text-[8px] mt-1" style="color:var(--muted)">Notional: $'+e.notional.toFixed(2)+'</div>';
+    q.appendChild(div);
+  }
+}
 
 // ===========================================================================
-// Live data fetching — real Kalshi markets and balance
+// Manual order submission
+// ===========================================================================
+function submitManualOrder(){
+  var market=document.getElementById('ex-market').value.trim();
+  var sideEl=document.querySelector('#ex-side-tog .toggle-btn.on');
+  var side=sideEl?sideEl.dataset.v:'yes';
+  var price=parseFloat(document.getElementById('ex-price').value);
+  var size=parseInt(document.getElementById('ex-size').value);
+  if(!market){showToast('Enter a market ticker','error');return}
+  if(!price||price<1||price>99){showToast('Price must be 1-99 cents','error');return}
+  if(!size||size<1){showToast('Size must be at least 1 contract','error');return}
+  var notional=price*size/100;
+  if(notional<30||notional>40){showToast('Notional $'+notional.toFixed(2)+' outside $30-40 range','error');return}
+  addLog('[MANUAL] Submitting '+side.toUpperCase()+' '+size+'x '+market+' @ '+price+'c ($'+notional.toFixed(2)+')','live');
+  var btn=document.getElementById('ex-exec-btn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
+  fetch('/api/order',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({market:market,side:side,price:price,size:size})
+  })
+    .then(function(r){return r.json()})
+    .then(function(d){
+      btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> Submit to Kalshi';
+      if(d.ok){
+        brain.liveOrderCount++;
+        brain.positions.push({id:brain.nextPosId++,source:'live',auto:false,marketId:market,question:market,side:side.toUpperCase(),entry:price,current:price,size:size,pnl:0,strategy:'manual',timestamp:Date.now(),status:'submitted',orderId:d.order&&d.order.order_id});
+        brain.tradeCount++;
+        brain.cashAvailable-=notional;
+        addLog('[MANUAL OK] Order accepted: '+(d.order&&d.order.order_id||'(no id)'),'live');
+        showToast('Order accepted by Kalshi','success');
+        brain.execQueue.unshift({market:market,side:side.toUpperCase(),size:size,price:price,notional:notional,time:new Date().toLocaleTimeString('en-US',{hour12:false}),status:'ACCEPTED'});
+        renderExecQueue(); renderPositions(); updateStats();
+      } else {
+        addLog('[MANUAL FAIL] '+(d.error||JSON.stringify(d.detail||'')),'risk');
+        showToast('Rejected: '+(d.error||'see log'),'error');
+        brain.execQueue.unshift({market:market,side:side.toUpperCase(),size:size,price:price,notional:notional,time:new Date().toLocaleTimeString('en-US',{hour12:false}),status:'REJECTED: '+(d.error||'')});
+        renderExecQueue();
+      }
+    })
+    .catch(function(e){
+      btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> Submit to Kalshi';
+      addLog('[MANUAL ERR] '+e.message,'risk');
+      showToast('Network error: '+e.message,'error');
+    });
+}
+
+// ===========================================================================
+// Live Kalshi market fetch (for Markets tab)
 // ===========================================================================
 function fetchKalshiMarkets(){
   var b=document.getElementById('mkt-body');
-  b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><i class="fas fa-spinner fa-spin"></i> Fetching live Kalshi markets...</td></tr>';
+  b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><i class="fas fa-spinner fa-spin"></i> Fetching...</td></tr>';
   fetch('/api/proxy?endpoint='+encodeURIComponent('markets?status=open&limit=50'))
     .then(function(r){return r.json()})
     .then(function(d){
       var markets=d.markets||[];
-      if(!markets.length){b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">No markets returned. Check /api/proxy logs.</td></tr>';return}
+      if(!markets.length){b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">No markets returned.</td></tr>';return}
       b.innerHTML='';
       for(var i=0;i<markets.length;i++){
         var mk=markets[i];
@@ -495,14 +899,13 @@ function fetchKalshiMarkets(){
         var vol=mk.volume?parseInt(mk.volume).toLocaleString():'—';
         var tr=document.createElement('tr');
         tr.innerHTML='<td class="mono text-[9px]" style="color:var(--accent)">'+mk.ticker+'</td><td>'+(mk.title||mk.subtitle||'—').substring(0,60)+'</td><td><span class="badge" style="background:var(--surface);color:var(--dim)">'+(mk.category||'—')+'</span></td><td class="mono">'+yesBid+'</td><td class="mono">'+yesAsk+'</td><td class="mono">'+vol+'</td><td><button class="btn btn-ghost btn-sm" data-ticker="'+mk.ticker+'"><i class="fas fa-arrow-right"></i></button></td>';
-        tr.querySelector('button').addEventListener('click',function(t,e){return function(){document.getElementById('ex-market').value=t;switchTab('execution');showToast('Loaded '+t+' into order form','info')}}(mk.ticker));
+        tr.querySelector('button').addEventListener('click',function(t){return function(){document.getElementById('ex-market').value=t;switchTab('manual');showToast('Loaded '+t+' into order form','info')}}(mk.ticker));
         b.appendChild(tr);
       }
       addLog('Fetched '+markets.length+' live Kalshi markets','system');
     })
     .catch(function(e){
       b.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--danger);padding:20px">Error: '+e.message+'</td></tr>';
-      addLog('Market fetch error: '+e.message,'risk');
     });
 }
 
@@ -516,39 +919,28 @@ function fetchKalshiBalance(){
         showToast('Balance: '+d.error,'error');
         return;
       }
-      // Kalshi balance response shape: { balance: number, ... }
       var bal=d.balance;
       var usd=bal&&typeof bal.balance==='number'?bal.balance:(bal&&typeof bal==='number'?bal:0);
       if(usd>0){
-        bot.portfolioValue=usd;
-        bot.startingCapital=usd;
-        bot.peakEquity=usd;
-        bot.equityHistory=[usd];
+        brain.portfolioValue=usd;
+        brain.startingCapital=usd;
+        brain.peakEquity=usd;
+        brain.cashAvailable=usd;
+        brain.investmentCap=Math.max(50,usd);
+        brain.equityHistory=[usd];
         addLog('Live balance loaded: $'+usd.toFixed(2),'live');
         showToast('Kalshi balance: $'+usd.toFixed(2),'success');
+        document.getElementById('cfg-invest').value=brain.investmentCap;
+        document.getElementById('cfg-invest2').value=brain.investmentCap;
         updateStats(); drawCharts();
       } else {
         addLog('Balance loaded but appears empty — fund your Kalshi account','system');
       }
-      // If positions came back, merge them in
       if(d.positions&&Array.isArray(d.positions.positions)){
         var kp=d.positions.positions;
         for(var i=0;i<kp.length;i++){
           var p=kp[i];
-          bot.positions.push({
-            id:bot.nextPosId++,
-            source:'live',
-            marketId:p.ticker,
-            question:p.title||p.ticker,
-            side:p.side==='yes'?'YES':'NO',
-            entry:p.avg_price||0,
-            current:p.cur_price||p.avg_price||0,
-            size:p.count||0,
-            pnl:p.realized_pnl||0,
-            strategy:'external',
-            timestamp:Date.now(),
-            status:'open-external'
-          });
+          brain.positions.push({id:brain.nextPosId++,source:'live',auto:false,marketId:p.ticker,question:p.title||p.ticker,side:p.side==='yes'?'YES':'NO',entry:p.avg_price||0,current:p.cur_price||p.avg_price||0,size:p.count||0,pnl:p.realized_pnl||0,strategy:'external',timestamp:Date.now(),status:'open-external'});
         }
         renderPositions(); updateStats();
       }
@@ -560,97 +952,18 @@ function fetchKalshiBalance(){
 }
 
 // ===========================================================================
-// Manual order submission — REAL Kalshi order via /api/order
-// ===========================================================================
-function submitManualOrder(){
-  var market=document.getElementById('ex-market').value.trim();
-  var sideEl=document.querySelector('#ex-side-tog .toggle-btn.on');
-  var side=sideEl?sideEl.dataset.v:'yes';
-  var price=parseFloat(document.getElementById('ex-price').value);
-  var size=parseInt(document.getElementById('ex-size').value);
-
-  if(!market){showToast('Enter a market ticker','error');return}
-  if(!price||price<1||price>99){showToast('Price must be 1-99 cents','error');return}
-  if(!size||size<1){showToast('Size must be at least 1 contract','error');return}
-
-  var notional=price*size/100;
-  if(notional<30||notional>50){
-    showToast('Notional $'+notional.toFixed(2)+' outside $30-50 range','error');
-    return;
-  }
-
-  addLog('[MANUAL] Submitting '+side.toUpperCase()+' '+size+'x '+market+' @ '+price+'c ($'+notional.toFixed(2)+')','live');
-  var btn=document.getElementById('ex-exec-btn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
-
-  fetch('/api/order',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({market:market,side:side,price:price,size:size})
-  })
-    .then(function(r){return r.json()})
-    .then(function(d){
-      btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> Submit to Kalshi';
-      if(d.ok){
-        bot.liveOrderCount++;
-        bot.positions.push({id:bot.nextPosId++,source:'live',marketId:market,question:market,side:side.toUpperCase(),entry:price,current:price,size:size,pnl:0,strategy:'manual',timestamp:Date.now(),status:'submitted',orderId:d.order&&d.order.order_id});
-        bot.tradeCount++;
-        addLog('[MANUAL OK] Order accepted: '+(d.order&&d.order.order_id||'(no id returned)'),'live');
-        showToast('Order accepted by Kalshi','success');
-        bot.execQueue.unshift({market:market,side:side.toUpperCase(),size:size,price:price,notional:notional,time:new Date().toLocaleTimeString('en-US',{hour12:false}),status:'ACCEPTED'});
-        renderExecQueue(); renderPositions(); updateStats();
-      } else {
-        addLog('[MANUAL FAIL] '+(d.error||JSON.stringify(d.detail||'')),'risk');
-        showToast('Rejected: '+(d.error||'see log'),'error');
-        bot.execQueue.unshift({market:market,side:side.toUpperCase(),size:size,price:price,notional:notional,time:new Date().toLocaleTimeString('en-US',{hour12:false}),status:'REJECTED: '+(d.error||'')});
-        renderExecQueue();
-      }
-    })
-    .catch(function(e){
-      btn.disabled=false; btn.innerHTML='<i class="fas fa-bolt"></i> Submit to Kalshi';
-      addLog('[MANUAL ERR] '+e.message,'risk');
-      showToast('Network error: '+e.message,'error');
-    });
-}
-
-function renderExecQueue(){
-  var q=document.getElementById('ex-queue');
-  if(!bot.execQueue.length){q.innerHTML='<p style="color:var(--muted);font-size:9px;padding:8px">No orders submitted yet</p>';return}
-  q.innerHTML='';
-  for(var i=0;i<bot.execQueue.length;i++){
-    var e=bot.execQueue[i];
-    var isOk=e.status==='ACCEPTED';
-    var div=document.createElement('div');
-    div.className='p-2 mb-1 rounded';
-    div.style.background='var(--surface)';
-    div.style.borderLeft='2px solid '+(isOk?'var(--accent)':'var(--danger)');
-    div.innerHTML='<div class="flex justify-between mb-1"><span class="mono text-[9px]">'+e.market+'</span><span class="text-[8px]" style="color:var(--muted)">'+e.time+'</span></div><div class="flex justify-between text-[9px]"><span>'+e.side+' '+e.size+'x @ '+e.price+'c</span><span class="mono" style="color:'+(isOk?'var(--accent)':'var(--danger)')+'">'+e.status+'</span></div><div class="text-[8px] mt-1" style="color:var(--muted)">Notional: $'+e.notional.toFixed(2)+'</div>';
-    q.appendChild(div);
-  }
-}
-
-function renderBayesianPanel(){/* reserved */}
-
-// ===========================================================================
 // Charts
 // ===========================================================================
-function setupCanvas(cv){
-  var dpr=window.devicePixelRatio||1;
-  var w=cv.clientWidth, h=cv.clientHeight;
-  if(!w||!h)return {w:0,h:0,ctx:null};
-  cv.width=w*dpr; cv.height=h*dpr;
-  var ctx=cv.getContext('2d'); ctx.scale(dpr,dpr);
-  return {w:w,h:h,ctx:ctx};
-}
-function drawCharts(){drawEquity();drawStrat();drawFlow();renderKelly()}
+function setupCanvas(cv){var dpr=window.devicePixelRatio||1;var w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return{w:0,h:0,ctx:null};cv.width=w*dpr;cv.height=h*dpr;var ctx=cv.getContext('2d');ctx.scale(dpr,dpr);return{w:w,h:h,ctx:ctx}}
+function drawCharts(){drawEquity();drawRisk()}
 function drawEquity(){
-  var cv=document.getElementById('eq-cv');var o=setupCanvas(cv);if(!o.w)return;
+  var cv=document.getElementById('risk-cv');if(!cv)return;var o=setupCanvas(cv);if(!o.w)return;
   var w=o.w,h=o.h,ctx=o.ctx;ctx.clearRect(0,0,w,h);
-  var pad={t:8,r:8,b:18,l:40},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
-  var data=bot.equityHistory; if(data.length<2){ctx.fillStyle='rgba(90,122,104,0.5)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
+  var data=brain.equityHistory;
+  if(data.length<2){ctx.fillStyle='rgba(90,122,104,0.5)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';ctx.fillText('No data yet',w/2,h/2);return}
   var minV=Math.min.apply(null,data),maxV=Math.max.apply(null,data);
   if(minV===maxV){minV-=1;maxV+=1}
-  var range=maxV-minV;
+  var range=maxV-minV,pad={t:10,r:10,b:20,l:40},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
   ctx.strokeStyle='rgba(26,48,37,0.3)';ctx.lineWidth=.5;
   for(var i=0;i<=4;i++){var y=pad.t+(ch/4)*i;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();ctx.fillStyle='rgba(90,122,104,0.5)';ctx.font='7px JetBrains Mono';ctx.textAlign='right';ctx.fillText('$'+Math.round(maxV-(range/4)*i),pad.l-3,y+3)}
   var step=cw/Math.max(1,data.length-1);
@@ -660,48 +973,12 @@ function drawEquity(){
   ctx.lineTo(pad.l+(data.length-1)*step,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();
   var grd=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);grd.addColorStop(0,'rgba(0,232,123,0.15)');grd.addColorStop(1,'rgba(0,232,123,0)');ctx.fillStyle=grd;ctx.fill();
 }
-function drawStrat(){
-  var cv=document.getElementById('strat-cv');var o=setupCanvas(cv);if(!o.w)return;
-  var w=o.w,h=o.h,ctx=o.ctx;ctx.clearRect(0,0,w,h);
-  var data=bot.stratPnL;var keys=Object.keys(data);var max=Math.max(1,Math.max.apply(null,keys.map(function(k){return Math.abs(data[k])})));
-  var pad={t:8,r:8,b:18,l:40},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
-  var bw=cw/keys.length;
-  for(var i=0;i<keys.length;i++){
-    var v=data[keys[i]];var bh=Math.abs(v)/max*ch/2;
-    var x=pad.l+i*bw,y=v>=0?pad.t+ch/2-bh:pad.t+ch/2;
-    ctx.fillStyle=v>=0?'#00e87b':'#ff4757';ctx.fillRect(x+2,y,bw-4,bh);
-    ctx.fillStyle='rgba(90,122,104,0.5)';ctx.font='7px JetBrains Mono';ctx.textAlign='center';ctx.fillText(keys[i].substring(0,8),x+bw/2,pad.t+ch+12);
-  }
-  ctx.strokeStyle='rgba(26,48,37,0.5)';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(pad.l,pad.t+ch/2);ctx.lineTo(pad.l+cw,pad.t+ch/2);ctx.stroke();
-}
-function drawFlow(){
-  var cv=document.getElementById('flow-cv');var o=setupCanvas(cv);if(!o.w)return;
-  var w=o.w,h=o.h,ctx=o.ctx;ctx.clearRect(0,0,w,h);
-  var data=bot.orderFlow.slice(-40);if(!data.length){ctx.fillStyle='rgba(90,122,104,0.5)';ctx.font='9px JetBrains Mono';ctx.textAlign='center';ctx.fillText('No flow yet',w/2,h/2);return}
-  var pad={t:8,r:8,b:18,l:30},cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;
-  var bw=cw/data.length;
-  for(var i=0;i<data.length;i++){
-    var f=data[i];var bh=Math.min(ch,f.size/200*ch);
-    var x=pad.l+i*bw,y=pad.t+ch-bh;
-    ctx.fillStyle=f.side==='BUY'?'rgba(0,232,123,0.6)':'rgba(255,71,87,0.6)';ctx.fillRect(x+1,y,bw-2,bh);
-  }
-}
-function renderKelly(){
-  var p=document.getElementById('kelly-panel');p.innerHTML='';
-  var sigs=bot.signals.filter(function(s){return s.kelly>0}).sort(function(a,b){return b.kelly-a.kelly}).slice(0,8);
-  if(!sigs.length){p.innerHTML='<p style="color:var(--muted);font-size:9px;padding:8px">No Kelly signals yet</p>';return}
-  for(var i=0;i<sigs.length;i++){
-    var s=sigs[i];var cc=CATC[s.category]||'#8fa698';
-    var d=document.createElement('div');d.className='mb-2';
-    d.innerHTML='<div class="flex justify-between mb-0.5"><span class="text-[8px]" style="color:'+cc+'">'+s.question.substring(0,22)+'</span><span class="mono text-[8px]" style="color:var(--gold)">'+s.kelly+'%</span></div><div style="background:var(--surface);border-radius:2px;height:8px;overflow:hidden"><div style="width:'+Math.min(100,s.kelly*4)+'%;height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:2px"></div></div>';
-    p.appendChild(d);
-  }
-}
+function drawRisk(){drawEquity()}
 
 // ===========================================================================
 // UI utilities
 // ===========================================================================
-function addLog(msg,cls){if(!cls)cls='system';var w=document.getElementById('log-wrap');var e=document.createElement('div');e.className='log-e '+cls;var t=new Date().toLocaleTimeString('en-US',{hour12:false});e.innerHTML='<span style="color:var(--muted)">'+t+'</span> '+msg;w.insertBefore(e,w.firstChild);while(w.children.length>100)w.removeChild(w.lastChild)}
+function addLog(msg,cls){if(!cls)cls='system';var w=document.getElementById('log-wrap');if(!w)return;var e=document.createElement('div');e.className='log-e '+cls;var t=new Date().toLocaleTimeString('en-US',{hour12:false});e.innerHTML='<span style="color:var(--muted)">'+t+'</span> '+msg;w.insertBefore(e,w.firstChild);while(w.children.length>100)w.removeChild(w.lastChild)}
 function showToast(msg,type){if(!type)type='info';var t=document.createElement('div');t.className='toast toast-'+(type==='success'?'s':type==='error'?'e':'i');t.innerHTML='<i class="fas fa-'+(type==='success'?'check-circle':type==='error'?'exclamation-circle':'info-circle')+'"></i> '+msg;document.getElementById('toasts').appendChild(t);setTimeout(function(){t.classList.add('show')},10);setTimeout(function(){t.classList.remove('show');setTimeout(function(){t.remove()},300)},4000)}
 function switchTab(name){var tabs=document.querySelectorAll('.tab-btn');var contents=document.querySelectorAll('.tab-content');for(var i=0;i<tabs.length;i++){tabs[i].classList.toggle('active',tabs[i].dataset.tab===name)}for(var j=0;j<contents.length;j++){contents[j].classList.toggle('active',contents[j].id==='tab-'+name)}}
 function updateBotUI(running){
@@ -711,18 +988,19 @@ function updateBotUI(running){
   var badge=document.getElementById('status-badge');
   if(running){
     dot.style.background='var(--accent)';dot.style.boxShadow='0 0 6px var(--accent)';
-    badge.className='badge badge-green';badge.innerHTML='<i class="fas fa-circle text-[5px]"></i> '+(bot.mode==='live'?'LIVE':'PAPER');
+    badge.className='badge badge-green';badge.innerHTML='<i class="fas fa-circle text-[5px]"></i> '+(brain.mode==='live'?'LIVE':'PAPER');
   } else {
     dot.style.background='var(--danger)';dot.style.boxShadow='0 0 6px var(--danger)';
     badge.className='badge badge-red';badge.innerHTML='<i class="fas fa-circle text-[5px]"></i> OFFLINE';
+    setPipelineStage('idle');
   }
 }
 function updateModeText(){
   var txt=document.getElementById('mode-text');
-  if(bot.mode==='live'){
-    txt.innerHTML='<b style="color:var(--danger)">LIVE MODE</b> — bot submits REAL orders to Kalshi via <span class="mono">/api/order</span>. Each order is bounded to $30–50 by the server. Make sure your Kalshi API keys are set.';
+  if(brain.mode==='live'){
+    txt.innerHTML='<b style="color:var(--danger)">LIVE MODE</b> — AI Brain submits REAL orders to Kalshi via <span class="mono">/api/order</span>. Each order is bounded to $30–40 by the server. Investment cap: $'+brain.investmentCap+'. Max 1 concurrent position.';
   } else {
-    txt.innerHTML='<b style="color:var(--gold)">PAPER MODE</b> — bot simulates trades locally, no real orders sent to Kalshi.';
+    txt.innerHTML='<b style="color:var(--gold)">PAPER MODE</b> — AI Brain runs the full research → risk → decision pipeline but logs trades locally instead of submitting to Kalshi.';
   }
 }
 function updateNotionalPreview(){
@@ -732,21 +1010,45 @@ function updateNotionalPreview(){
   var el=document.getElementById('ex-notional');
   var note=document.getElementById('ex-cap-note');
   el.textContent='$'+notional.toFixed(2);
-  el.style.color=(notional>=30&&notional<=50)?'var(--accent)':'var(--danger)';
-  note.textContent=notional<30?'Below $30 minimum — increase size or price':notional>50?'Above $50 maximum — decrease size or price':'Within $30–50 range — OK to submit';
-  note.style.color=(notional>=30&&notional<=50)?'var(--accent)':'var(--danger)';
+  el.style.color=(notional>=30&&notional<=40)?'var(--accent)':'var(--danger)';
+  note.textContent=notional<30?'Below $30 minimum — increase size or price':notional>40?'Above $40 maximum — decrease size or price':'Within $30–40 range — OK to submit';
+  note.style.color=(notional>=30&&notional<=40)?'var(--accent)':'var(--danger)';
+}
+
+// ===========================================================================
+// Sync config from inputs to brain.cfg
+// ===========================================================================
+function syncConfig(){
+  brain.investmentCap=parseFloat(document.getElementById('cfg-invest').value)||50;
+  brain.cfg.maxPos=parseInt(document.getElementById('cfg-target').value)||35;
+  brain.cfg.concurrent=1; // hardcoded — $50 investment only supports 1 position
+  brain.cfg.sl=parseInt(document.getElementById('cfg-sl').value)||15;
+  brain.cfg.tp=parseInt(document.getElementById('cfg-tp').value)||30;
+  brain.cfg.scanMs=(parseInt(document.getElementById('cfg-scan').value)||30)*1000;
+  brain.cfg.minConf=parseInt(document.getElementById('cfg-minconf').value)||60;
+  brain.cashAvailable=Math.max(0,brain.investmentCap-brain.positions.reduce(function(s,p){return s+(p.notional||p.size/100*p.entry)},0));
+  // Mirror to config tab
+  document.getElementById('cfg-invest2').value=brain.investmentCap;
+  document.getElementById('cfg-target').value=brain.cfg.maxPos;
+  document.getElementById('cfg-concurrent2').value=1;
+  document.getElementById('cfg-scan2').value=document.getElementById('cfg-scan').value;
+  document.getElementById('cfg-sl2').value=brain.cfg.sl;
+  document.getElementById('cfg-tp2').value=brain.cfg.tp;
+  document.getElementById('cfg-minconf2').value=brain.cfg.minConf;
 }
 
 // ===========================================================================
 // Wire up DOM events
 // ===========================================================================
 document.addEventListener('DOMContentLoaded',function(){
-  bot.init();
+  // Initialize UI
+  setPipelineStage('idle');
   updateModeText();
   updateStats();
-  drawCharts();
   renderPositions();
   renderExecQueue();
+  renderCandidates();
+  renderDecisions();
 
   // Tab switching
   var tabs=document.querySelectorAll('.tab-btn');
@@ -754,23 +1056,76 @@ document.addEventListener('DOMContentLoaded',function(){
     tabs[i].addEventListener('click',function(){switchTab(this.dataset.tab)}.bind(tabs[i]));
   }
 
-  // Mode toggle
+  // Mode toggle (brain tab)
   var modeBtns=document.querySelectorAll('#mode-tog .toggle-btn');
   for(var i=0;i<modeBtns.length;i++){
     modeBtns[i].addEventListener('click',function(){
       var v=this.dataset.v;
       modeBtns.forEach(function(b){b.classList.remove('on','on-red')});
       this.classList.add(v==='live'?'on-red':'on');
-      bot.mode=v;
+      brain.mode=v;
+      // Sync config tab toggle
+      var modeBtns2=document.querySelectorAll('#mode-tog2 .toggle-btn');
+      modeBtns2.forEach(function(b){b.classList.remove('on','on-red');if(b.dataset.v===v)b.classList.add(v==='live'?'on-red':'on')});
       updateModeText();
-      updateBotUI(bot.running);
+      updateBotUI(brain.running);
     }.bind(modeBtns[i]));
   }
 
-  // Start/Stop
-  document.getElementById('start-btn').addEventListener('click',function(){bot.start()});
-  document.getElementById('stop-btn').addEventListener('click',function(){bot.stop()});
-  document.getElementById('close-all-btn').addEventListener('click',function(){bot.closeAll()});
+  // Mode toggle (config tab)
+  var modeBtns2=document.querySelectorAll('#mode-tog2 .toggle-btn');
+  for(var i=0;i<modeBtns2.length;i++){
+    modeBtns2[i].addEventListener('click',function(){
+      var v=this.dataset.v;
+      modeBtns2.forEach(function(b){b.classList.remove('on','on-red')});
+      this.classList.add(v==='live'?'on-red':'on');
+      brain.mode=v;
+      modeBtns.forEach(function(b){b.classList.remove('on','on-red');if(b.dataset.v===v)b.classList.add(v==='live'?'on-red':'on')});
+      updateModeText();
+      updateBotUI(brain.running);
+    }.bind(modeBtns2[i]));
+  }
+
+  // Config input listeners
+  ['cfg-invest','cfg-target','cfg-scan','cfg-sl','cfg-tp','cfg-minconf'].forEach(function(id){
+    document.getElementById(id).addEventListener('change',syncConfig);
+  });
+  ['cfg-invest2','cfg-target','cfg-scan2','cfg-sl2','cfg-tp2','cfg-minconf2'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.addEventListener('change',function(){
+      // Mirror back to brain tab
+      var brainId=id.replace('2','');
+      if(document.getElementById(brainId))document.getElementById(brainId).value=el.value;
+      syncConfig();
+    });
+  });
+
+  // Start/Stop brain
+  document.getElementById('start-btn').addEventListener('click',function(){
+    syncConfig();
+    brain.running=true;
+    addLog('=== AI BRAIN STARTED ('+brain.mode.toUpperCase()+') ===','system');
+    addLog('Investment cap: $'+brain.investmentCap+' | Per-order: $'+brain.cfg.maxPos+' | Max concurrent: 1 | Scan: '+(brain.cfg.scanMs/1000)+'s','system');
+    updateBotUI(true);
+    // Run first cycle immediately
+    brainCycle();
+    // Schedule recurring cycles
+    brain.timers.push(setInterval(brainCycle,brain.cfg.scanMs));
+    // Position management loop (faster)
+    brain.timers.push(setInterval(managePositions,2000));
+  });
+  document.getElementById('stop-btn').addEventListener('click',function(){
+    brain.running=false;
+    brain.timers.forEach(function(t){clearInterval(t)});
+    brain.timers=[];
+    addLog('=== AI BRAIN STOPPED ===','risk');
+    showToast('AI Brain stopped','info');
+    updateBotUI(false);
+  });
+  document.getElementById('close-all-btn').addEventListener('click',function(){
+    var copy=[].concat(brain.positions).filter(function(p){return p.source==='paper'});
+    copy.forEach(function(p){closePos(p.id,'close-all')});
+  });
 
   // Markets tab
   document.getElementById('load-markets-btn').addEventListener('click',fetchKalshiMarkets);
@@ -785,36 +1140,44 @@ document.addEventListener('DOMContentLoaded',function(){
       this.classList.add('on');
     }.bind(exSideBtns[i]));
   }
-
-  // Notional preview
   document.getElementById('ex-price').addEventListener('input',updateNotionalPreview);
   document.getElementById('ex-size').addEventListener('input',updateNotionalPreview);
   updateNotionalPreview();
-
-  // Submit order
   document.getElementById('ex-exec-btn').addEventListener('click',submitManualOrder);
 
-  // Try to fetch live balance on load (will silently fail if keys not set — that's fine)
+  // Strategy toggles
+  var stratCheckboxes=document.querySelectorAll('#strat-toggles input[type=checkbox]');
+  for(var i=0;i<stratCheckboxes.length;i++){
+    stratCheckboxes[i].addEventListener('change',function(){
+      if(this.checked)brain.activeStrats.add(this.dataset.s);
+      else brain.activeStrats.delete(this.dataset.s);
+    });
+  }
+
+  // Try to fetch live balance on load
   setTimeout(function(){
     fetch('/api/balance').then(function(r){return r.json()}).then(function(d){
       if(!d.error&&d.balance){
         var usd=d.balance&&typeof d.balance.balance==='number'?d.balance.balance:0;
         if(usd>0){
-          bot.portfolioValue=usd;bot.startingCapital=usd;bot.peakEquity=usd;bot.equityHistory=[usd];
-          addLog('Live Kalshi balance loaded on startup: $'+usd.toFixed(2),'live');
+          brain.portfolioValue=usd;brain.startingCapital=usd;brain.peakEquity=usd;
+          brain.cashAvailable=usd;brain.investmentCap=Math.max(50,usd);
+          brain.equityHistory=[usd];
+          document.getElementById('cfg-invest').value=brain.investmentCap;
+          document.getElementById('cfg-invest2').value=brain.investmentCap;
+          addLog('Live Kalshi balance loaded: $'+usd.toFixed(2),'live');
           updateStats();drawCharts();
         } else {
-          addLog('Kalshi API reachable but account balance is $0 — fund your account','system');
+          addLog('Kalshi API reachable but balance $0 — using $50 investment cap','system');
         }
       } else {
         addLog('Kalshi API not configured. Set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM in Vercel env vars.','system');
-        addLog('Until then, all trades are paper-only.','system');
+        addLog('Until then, AI Brain runs in PAPER mode only (no real orders).','system');
       }
-    }).catch(function(){addLog('Could not reach /api/balance — running in offline mode','system')});
+    }).catch(function(){addLog('Could not reach /api/balance — running offline','system')});
   },800);
 });
 
-// Redraw charts on resize
 window.addEventListener('resize',function(){clearTimeout(window._rt);window._rt=setTimeout(drawCharts,150)});
 </script>
 </body>
