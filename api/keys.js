@@ -82,11 +82,18 @@ export function getKalshiCreds() {
 }
 
 // ---------------------------------------------------------------------------
-// Hard $30 position cap — enforced in BOTH api/order.js and any client.
-// This is a server-side gate so the browser cannot bypass it.
+// Position size guardrails — enforced in api/order.js before any network
+// call. Server-side constants, so the browser cannot bypass them.
+//
+// MIN_POSITION_USD = 30   -> reject dust / test orders below this
+// MAX_POSITION_USD = 50   -> reject any order above this
+//
+// To change the range, edit these two numbers and redeploy. Do NOT expose
+// them as env vars — that would let the browser override them.
 // ---------------------------------------------------------------------------
 
-export const MAX_POSITION_USD = 30;
+export const MIN_POSITION_USD = 30;
+export const MAX_POSITION_USD = 50;
 
 export function enforceCap(price, size) {
   const p = Number(price);
@@ -95,12 +102,23 @@ export function enforceCap(price, size) {
     return { ok: false, error: 'Invalid price or size', notional: NaN };
   }
   const notional = p * s;
+  if (notional < MIN_POSITION_USD) {
+    return {
+      ok: false,
+      error: `Order notional $${notional.toFixed(2)} is below the $${MIN_POSITION_USD} minimum. Increase size or price.`,
+      notional,
+      min: MIN_POSITION_USD,
+      max: MAX_POSITION_USD,
+    };
+  }
   if (notional > MAX_POSITION_USD) {
     return {
       ok: false,
       error: `Order notional $${notional.toFixed(2)} exceeds the $${MAX_POSITION_USD} hard cap. Reduce size or price.`,
       notional,
+      min: MIN_POSITION_USD,
+      max: MAX_POSITION_USD,
     };
   }
-  return { ok: true, notional };
+  return { ok: true, notional, min: MIN_POSITION_USD, max: MAX_POSITION_USD };
 }

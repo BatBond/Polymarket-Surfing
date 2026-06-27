@@ -26,7 +26,7 @@ If you are in the US, **use Kalshi only**. Trying to reach Polymarket from the U
 ├── .env.example         Template for all API keys (DO NOT commit the real .env)
 ├── api/
 │   ├── proxy.js         Public market data (read-only, no keys)
-│   ├── order.js         Authenticated order placement  ← $30 hard cap lives here
+│   ├── order.js         Authenticated order placement  ← $30–50 guardrail lives here
 │   ├── balance.js       Authenticated balance fetch
 │   └── keys.js          Polymarket L2 HMAC + Kalshi RSA signing helpers
 └── README.md
@@ -60,7 +60,7 @@ Vercel will install `@polymarket/clob-client` and `ethers` from `package.json` a
    - `KALSHI_PRIVATE_KEY_PEM` — full contents of `kalshi_private.pem` (paste as one string, you can keep the `\n` newlines)
 5. Redeploy. The dashboard's `/api/balance?platform=kalshi` and `/api/order` (with `platform: "kalshi"`) routes are now live.
 
-**Funding Kalshi:** Kalshi takes USD deposits via bank transfer only — no crypto. Trades settle in USD. The $30 cap in this repo is on per-order notional; your Kalshi account balance is separate.
+**Funding Kalshi:** Kalshi takes USD deposits via bank transfer only — no crypto. Trades settle in USD. The $30–50 cap in this repo is on per-order notional; your Kalshi account balance is separate. Fund the account with however much you want — the per-order guardrail still applies.
 
 ---
 
@@ -96,11 +96,21 @@ Then set these env vars in Vercel:
 
 ---
 
-## The $30 hard cap
+## The $30–$50 per-order guardrail
 
-Enforced in `api/keys.js` → `enforceCap(price, size)` and called at the top of `api/order.js`. The check runs **before** any network call, and the cap value (`MAX_POSITION_USD = 30`) is a server-side constant — there is no env var or query param to override it from the browser.
+Enforced in `api/keys.js` → `enforceCap(price, size)` and called at the top of `api/order.js`. The check runs **before** any network call, and the constants (`MIN_POSITION_USD = 30`, `MAX_POSITION_USD = 50`) live server-side — there are no env vars or query params to override them from the browser.
 
-If you want a different limit, edit `MAX_POSITION_USD` in `api/keys.js` and redeploy. Don't expose it as an env var; if you do, anyone with browser access can change it client-side.
+- Orders with notional `< $30` are rejected (prevents dust / test orders)
+- Orders with notional `> $50` are rejected (hard cap)
+- The dashboard's "Max Position ($)" input is clamped to `min=30 max=50` and defaults to `$30`
+
+If you want a different range, edit both constants in `api/keys.js` and redeploy. Don't expose them as env vars; if you do, anyone with browser access can change them client-side.
+
+## Starting portfolio
+
+The dashboard ships with **$0** starting paper balance — no fake $50K seed, no pre-loaded positions, no trade history. Press **Start Bot** and it begins cleanly from zero. The displayed Portfolio value reflects realized P&L as the paper bot opens and closes positions.
+
+For live mode, your real wallet balance is fetched via `/api/balance?platform=kalshi` once your Kalshi keys are set.
 
 ---
 
@@ -110,22 +120,12 @@ If you want a different limit, edit `MAX_POSITION_USD` in `api/keys.js` and rede
 |---|---|---|---|
 | `/api/proxy?platform=…&endpoint=…` | GET | none | Public market data (markets, prices, order books) |
 | `/api/balance?platform=kalshi\|polymarket` | GET | L2 / RSA | Wallet balance |
-| `/api/order` | POST | L2 / RSA | Place a limit order (subject to $30 cap) |
+| `/api/order` | POST | L2 / RSA | Place a limit order (subject to $30–50 guardrail) |
 
 ### Place an order (example)
 
 ```bash
-curl -X POST https://your-app.vercel.app/api/order \
-  -H "Content-Type: application/json" \
-  -d '{
-    "platform": "kalshi",
-    "market": "KXBTC-26DEC31-B500000",
-    "side": "yes",
-    "price": 35,
-    "size": 0.85
-  }'
-# notional = 35 * 0.85 = $29.75  ← under cap, allowed
-
+# ✅ Allowed — notional $35.00 is inside the $30–50 range
 curl -X POST https://your-app.vercel.app/api/order \
   -H "Content-Type: application/json" \
   -d '{
@@ -135,7 +135,28 @@ curl -X POST https://your-app.vercel.app/api/order \
     "price": 35,
     "size": 1
   }'
-# notional = $35.00  ← over cap, rejected with 400
+
+# ❌ Rejected — notional $25.00 is below the $30 minimum
+curl -X POST https://your-app.vercel.app/api/order \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "kalshi",
+    "market": "KXBTC-26DEC31-B500000",
+    "side": "yes",
+    "price": 25,
+    "size": 1
+  }'
+
+# ❌ Rejected — notional $60.00 is above the $50 maximum
+curl -X POST https://your-app.vercel.app/api/order \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "kalshi",
+    "market": "KXBTC-26DEC31-B500000",
+    "side": "yes",
+    "price": 60,
+    "size": 1
+  }'
 ```
 
 ---

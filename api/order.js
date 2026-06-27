@@ -9,14 +9,15 @@
 //   side:     "yes" | "no"          (polymarket)  |  "buy" | "sell" (kalshi)
 //   price:    <0..1 for poly | 0..100 for kalshi cents>,
 //   size:     <number of shares>,
-//   // optional overrides — server enforces $30 cap regardless
+//   // optional overrides — server enforces $30-50 range regardless
 // }
 //
-// The $30 hard cap (MAX_POSITION_USD in keys.js) is enforced BEFORE any
+// The $30 minimum / $50 maximum per-order guardrail
+// (MIN_POSITION_USD / MAX_POSITION_USD in keys.js) is enforced BEFORE any
 // network call. A browser cannot bypass this; it lives on the server.
 // ---------------------------------------------------------------------------
 
-import { polyL2Headers, getPolyCreds, kalshiHeaders, getKalshiCreds, MAX_POSITION_USD, enforceCap } from './keys.js';
+import { polyL2Headers, getPolyCreds, kalshiHeaders, getKalshiCreds, MIN_POSITION_USD, MAX_POSITION_USD, enforceCap } from './keys.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -30,10 +31,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields: platform, market, side, price, size' });
   }
 
-  // --- $30 hard cap (server-side, unbypassable) ---------------------------
+  // --- $30-50 guardrail (server-side, unbypassable) -----------------------
   const cap = enforceCap(price, size);
   if (!cap.ok) {
-    return res.status(400).json({ error: cap.error, notional: cap.notional, cap: MAX_POSITION_USD });
+    return res.status(400).json({ error: cap.error, notional: cap.notional, min: MIN_POSITION_USD, max: MAX_POSITION_USD });
   }
 
   try {
