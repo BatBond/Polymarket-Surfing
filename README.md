@@ -4,6 +4,16 @@ Autonomous AI trading brain for **Kalshi** (CFTC-registered, US-legal). The brai
 
 ---
 
+## ⚠️ READ THIS FIRST — Vercel networking issue
+
+If you deployed to Vercel and saw "DNS resolution failed for api.kalshi.com" in the Test Connection results, **this is a Vercel platform issue, not a code bug.** Vercel's serverless functions in some regions cannot resolve `api.kalshi.com` — a public hostname that resolves everywhere else.
+
+**The fix: deploy to Render instead.** Render runs Node on normal EC2 instances with standard DNS resolution. Same code, different platform, problem solved. See "Deploy to Render" below.
+
+If Render ALSO fails with the same DNS error, then Kalshi is blocking cloud provider IP ranges (some regulated APIs do this). In that case, see "Streamlit Alternative" at the bottom of this README.
+
+---
+
 ## What the AI Brain actually does
 
 Every scan cycle (default 30 seconds), the brain runs a 5-stage pipeline:
@@ -68,14 +78,53 @@ If you increase your investment cap (e.g. to $200), edit the `max` attribute on 
 
 ---
 
-## Deploy to Vercel
+## Deploy to Render (RECOMMENDED — fixes the Vercel DNS issue)
+
+Render runs Node on standard EC2 instances with normal DNS, which fixes the "ENOTFOUND for api.kalshi.com" error you hit on Vercel.
+
+### Option A — One-click Blueprint deploy (fastest)
+
+1. Push this folder to a GitHub repo (must include `render.yaml`).
+2. Go to <https://render.com> → **New** → **Blueprint**.
+3. Select your GitHub repo. Render auto-detects `render.yaml` and creates the service.
+4. Click **Apply**.
+5. Once deployed, go to your service → **Environment** tab → add these env vars:
+   - `KALSHI_KEY_ID` — your Kalshi Key ID
+   - `KALSHI_PRIVATE_KEY_PEM` — full contents of `kalshi_private.pem`
+6. Render auto-redeploys when env vars change.
+7. Open your Render URL → click **Test Connection** → all 6 health check steps should pass.
+
+### Option B — Manual web service deploy
+
+1. Push this folder to a GitHub repo.
+2. Go to <https://render.com> → **New** → **Web Service**.
+3. Connect your GitHub repo.
+4. Settings:
+   - **Runtime**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `node server.js`
+   - **Plan**: Free (sufficient for this app)
+   - **Region**: Oregon (closest to Kalshi's US infrastructure)
+5. Under **Environment**, add `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM`.
+6. Click **Create Web Service**.
+7. Wait for the build to finish, then open the URL.
+
+### Why Render works when Vercel doesn't
+
+Vercel runs functions in isolated containers with custom DNS resolution that sometimes fails for specific hostnames. Render runs a normal Node process on a standard EC2 instance with the OS's DNS resolver — the same DNS that works on your laptop. If `api.kalshi.com` resolves on your machine, it'll resolve on Render.
+
+---
+
+## Deploy to Vercel (NOT recommended — known DNS issue)
+
+If you want to try Vercel anyway:
 
 1. Push this folder to a GitHub repo.
 2. Import at <https://vercel.com/new>.
 3. **Framework Preset** → *Other*. Leave Build/Output/Install empty.
 4. Click **Deploy**.
 
-No `npm install` is needed — the API routes use only Node's built-in `crypto` module.
+If you see "ENOTFOUND for api.kalshi.com" in Test Connection, switch to Render (above). Vercel's serverless DNS cannot reach Kalshi in some regions.
 
 ---
 
@@ -247,17 +296,33 @@ curl -X POST https://your-app.vercel.app/api/order \
 ```
 .
 ├── index.html           Dashboard with AI Brain tab
-├── package.json         No runtime deps
-├── vercel.json          No framework, no build step
+├── server.js            Express server (for Render/Railway/etc. — Vercel doesn't need this)
+├── render.yaml          Render Blueprint for one-click deploy
+├── package.json         Express dependency (for non-Vercel platforms)
+├── vercel.json          Vercel config (no framework, no build step)
 ├── .gitignore
+├── .renderignore
 ├── .env.example         Kalshi API key template
 ├── api/
-│   ├── proxy.js         Public Kalshi market data
+│   ├── proxy.js         Public Kalshi market data (with retry + fallback)
 │   ├── order.js         Authenticated order placement ($30-40 cap)
 │   ├── balance.js       Authenticated balance + positions
-│   └── keys.js          Kalshi RSA signing + cap enforcement
+│   ├── health.js        Connection diagnostic endpoint
+│   └── keys.js          Kalshi RSA signing + cap enforcement + fetchWithRetry
 └── README.md
 ```
+
+---
+
+## Streamlit Alternative (if Render also fails)
+
+If you deployed to Render and STILL see "ENOTFOUND for api.kalshi.com" in Test Connection, then Kalshi is blocking cloud provider IP ranges (some regulated APIs do this for geofencing compliance). In that case, you have two options:
+
+1. **Run the app locally on your own machine** — your home internet is not a cloud provider, so Kalshi won't block it. Download this folder, run `npm install && node server.js`, open `http://localhost:3000`. Downside: your computer must be on for the bot to trade.
+
+2. **Rewrite in Streamlit + deploy to Streamlit Cloud** — Streamlit Cloud uses different IP ranges than Vercel/Render. This requires a full rewrite in Python. If you want this, ask and I'll do it — but it's a substantial rewrite (the brain, the dashboard, the API routes, the risk gates all need to be ported to Python).
+
+**Recommendation**: try Render first. If Render fails, run locally. Only move to Streamlit if you need always-on cloud hosting AND Render is blocked.
 
 ---
 

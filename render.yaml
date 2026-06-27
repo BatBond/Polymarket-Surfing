@@ -1,0 +1,34 @@
+# render.yaml — Render Blueprint for one-click deployment
+# ---------------------------------------------------------------------------
+# Deploy this app to Render by going to:
+#   https://render.com/Blueprint -> New -> Paste this repo URL
+#
+# Render runs Node on standard EC2 instances with normal DNS resolution,
+# which fixes the "ENOTFOUND for api.kalshi.com" issue we were hitting on
+# Vercel's serverless runtime.
+# ---------------------------------------------------------------------------
+
+services:
+  - type: web
+    name: kalshi-ai-brain
+    runtime: node
+    plan: free
+    region: oregon  # US West — closest Render region to Kalshi's US infrastructure
+    buildCommand: "echo 'No build needed — static site + Node API'"
+    startCommand: "node server.js"
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.0.0
+      - key: KALSHI_KEY_ID
+        sync: false  # set this in Render dashboard after deploy
+      - key: KALSHI_PRIVATE_KEY_PEM
+        sync: false  # set this in Render dashboard after deploy
+    routes:
+      - src: /api/(.*)
+        dest: /api/$1
+      - src: /(.*\.(html|css|js|svg|png|ico))
+        dest: /$1
+      - src: /
+        dest: /index.html

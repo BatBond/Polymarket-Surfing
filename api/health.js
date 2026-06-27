@@ -11,6 +11,8 @@
 // ---------------------------------------------------------------------------
 
 import { kalshiHeaders, getKalshiCreds, hasKalshiCreds, fetchWithRetry } from './keys.js';
+import dns from 'node:dns';
+import { lookup } from 'node:dns/promises';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'GET only' });
@@ -21,7 +23,44 @@ export default async function handler(req, res) {
     steps: [],
     overall: 'unknown',
     vercel_region: process.env.VERCEL_REGION || 'unknown',
+    platform: process.env.RENDER ? 'render' : process.env.VERCEL ? 'vercel' : 'unknown',
   };
+
+  // STEP 0: DNS diagnostic — try to resolve api.kalshi.com directly
+  // This tells us if the issue is DNS-specific or network-wide
+  try {
+    const addresses = await lookup('api.kalshi.com', { all: true });
+    report.steps.push({
+      name: 'DNS resolves api.kalshi.com',
+      pass: true,
+      detail: 'Yes — resolved to: ' + addresses.map(a => a.address).join(', '),
+    });
+  } catch (dnsErr) {
+    report.steps.push({
+      name: 'DNS resolves api.kalshi.com',
+      pass: false,
+      detail: 'No — ' + dnsErr.code + ': ' + dnsErr.message,
+      hint: 'DNS resolution failed. This could be: (1) a platform network restriction, (2) Kalshi blocking cloud provider IP ranges, (3) a regional DNS issue. Try deploying to a different platform (Render, Railway) or region.',
+    });
+  }
+
+  // STEP 0b: Test if general internet works (try google.com)
+  try {
+    const testRes = await fetch('https://www.google.com', { signal: AbortSignal.timeout(5000) });
+    report.steps.push({
+      name: 'General internet reachable (google.com)',
+      pass: testRes.ok,
+      detail: testRes.ok ? 'Yes — google.com responded' : 'HTTP ' + testRes.status,
+    });
+  } catch (err) {
+    const cause = err.cause ? (err.cause.code || err.cause.message) : err.message;
+    report.steps.push({
+      name: 'General internet reachable (google.com)',
+      pass: false,
+      detail: 'No — ' + cause,
+      hint: 'If google.com also fails, the platform has no outbound internet. If google.com works but api.kalshi.com fails, Kalshi is specifically blocking this platform/region.',
+    });
+  }
 
   // STEP 1: Kalshi API reachable (markets endpoint, no auth needed for this test)
   try {
@@ -42,8 +81,8 @@ export default async function handler(req, res) {
       name: 'Kalshi API reachable (markets endpoint)',
       pass: false,
       detail: 'No — ' + cause,
-      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com. This is a Vercel network issue. Try redeploying, or check Vercel status page. If it persists, your Vercel region ('+report.vercel_region+') may have network restrictions.' :
-            cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT' ? 'Connection timed out. Kalshi may be blocking Vercel IPs in your region ('+report.vercel_region+').' :
+      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com. If google.com works above but this fails, Kalshi is blocking your platform. Try Render (different IP range) or a Vercel US region.' :
+            cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT' ? 'Connection timed out. Kalshi may be blocking Vercel IPs in your region (' + report.vercel_region + ').' :
             'Network error: ' + cause,
     });
     report.overall = 'fail';
