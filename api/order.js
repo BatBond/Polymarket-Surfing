@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'side must be "yes" or "no"' });
   }
 
-  const path = '/portfolio/orders';
+  const path = '/trade-api/v2/portfolio/orders';
   const body = JSON.stringify({
     ticker: market,
     side: kalshiSide,
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     };
 
     const result = await fetchWithRetry(
-      'https://api.elections.kalshi.com/trade-api/v2' + path,
+      'https://api.elections.kalshi.com' + path,
       { method: 'POST', headers, body }
     );
 

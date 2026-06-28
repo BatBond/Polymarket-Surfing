@@ -106,7 +106,7 @@ export default async function handler(req, res) {
   const creds = getKalshiCreds();
   let testHeaders;
   try {
-    testHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balance');
+    testHeaders = kalshiHeaders(creds, 'GET', '/trade-api/v2/portfolio/balance');
     report.steps.push({ name: 'PEM signs request', pass: true, detail: 'Yes — RSA signature generated' });
   } catch (e) {
     report.steps.push({
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
         pass: false,
         status: balResult.status,
         detail: 'No — Kalshi returned ' + balResult.status + ': ' + JSON.stringify(balResult.data).substring(0, 200),
-        hint: balResult.status === 401 ? 'Private key does not match the public key uploaded to Kalshi. Regenerate keypair, re-upload public key to Kalshi dashboard, update KALSHI_PRIVATE_KEY_PEM env var.' :
+        hint: balResult.status === 401 ? 'Signature rejected. Click "Test Auth" button to run a comprehensive signing diagnostic. If all formats fail, your private key does not match the public key on Kalshi — regenerate the keypair, re-upload the public key to Kalshi dashboard, and update both KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM env vars.' :
               balResult.status === 403 ? 'Account may not have trading permissions enabled. Check Kalshi account status.' :
               'Kalshi rejected the request. Check the detail field.',
       });
@@ -174,7 +174,7 @@ export default async function handler(req, res) {
   try {
     const orderHeaders = {
       'Content-Type': 'application/json',
-      ...kalshiHeaders(creds, 'POST', '/portfolio/orders'),
+      ...kalshiHeaders(creds, 'POST', '/trade-api/v2/portfolio/orders'),
     };
     const orderResult = await fetchWithRetry(
       'https://api.elections.kalshi.com/trade-api/v2/portfolio/orders',

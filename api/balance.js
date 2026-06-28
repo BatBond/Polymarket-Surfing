@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   try {
     let balHeaders;
     try {
-      balHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balance');
+      balHeaders = kalshiHeaders(creds, 'GET', '/trade-api/v2/portfolio/balance');
     } catch (signErr) {
       return res.status(500).json({
         error: 'Failed to sign request with KALSHI_PRIVATE_KEY_PEM',
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     // Try to also fetch positions (non-fatal if it fails)
     let positions = null;
     try {
-      const posHeaders = kalshiHeaders(creds, 'GET', '/portfolio/positions');
+      const posHeaders = kalshiHeaders(creds, 'GET', '/trade-api/v2/portfolio/positions');
       const posResult = await fetchWithRetry(
         'https://api.elections.kalshi.com/trade-api/v2/portfolio/positions',
         { headers: posHeaders }

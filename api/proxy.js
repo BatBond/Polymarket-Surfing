@@ -27,9 +27,12 @@ export default async function handler(req, res) {
   }
 
   // Split path from query string so we sign the path only (Kalshi requirement)
-  const [path, queryString] = endpoint.split('?');
-  const fullPath = queryString ? `${path}?${queryString}` : path;
+  const [pathOnly, queryString] = endpoint.split('?');
+  const fullPath = queryString ? `${pathOnly}?${queryString}` : pathOnly;
   const url = `${BASE_URL}${fullPath.startsWith('/') ? fullPath : '/' + fullPath}`;
+
+  // Kalshi requires the FULL path (including /trade-api/v2/) for signing
+  const signPath = '/trade-api/v2/' + pathOnly.replace(/^\//, '');
 
   const headers = {
     'Accept': 'application/json',
@@ -40,7 +43,7 @@ export default async function handler(req, res) {
   const creds = getKalshiCreds();
   if (creds.keyId && creds.privateKeyPem) {
     try {
-      Object.assign(headers, kalshiHeaders(creds, 'GET', path));
+      Object.assign(headers, kalshiHeaders(creds, 'GET', signPath));
     } catch (e) {
       console.error('[proxy] signing failed:', e.message);
     }

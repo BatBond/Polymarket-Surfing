@@ -231,6 +231,7 @@ Dashboard: http://localhost:3000</pre>
 <button class="btn btn-danger w-full justify-center" id="stop-btn" disabled><i class="fas fa-stop"></i> Stop AI Brain</button>
 <button class="btn btn-ghost w-full justify-center" id="cycle-now-btn" disabled><i class="fas fa-forward"></i> Run Cycle Now</button>
 <button class="btn btn-ghost w-full justify-center" id="health-btn"><i class="fas fa-stethoscope"></i> Test Connection</button>
+<button class="btn btn-ghost w-full justify-center" id="auth-btn"><i class="fas fa-key"></i> Test Auth (signing)</button>
 <div class="p-2 rounded" style="background:var(--surface);border-left:2px solid var(--gold)">
 <p class="lbl" style="color:var(--gold)">BRAIN PIPELINE</p>
 <p class="text-[9px]" style="color:var(--dim);line-height:1.5">Every scan cycle: <b>Research</b> → <b>Score</b> → <b>Risk Check</b> → <b>Decide</b> → <b>Execute</b></p>
@@ -1136,6 +1137,91 @@ function runHealthCheck(){
 }
 
 // ===========================================================================
+// Auth test — tries multiple signing path formats and reports which works
+// ===========================================================================
+function runAuthTest(){
+  addLog('[AUTH] Running comprehensive signing test...','system');
+  showToast('Testing 4 signing path formats against Kalshi...','info');
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML='<div class="card" style="max-width:700px;width:100%;padding:20px;max-height:85vh;overflow-y:auto">'+
+    '<div class="flex justify-between mb-3"><h3 class="text-[12px] font-bold tracking-wider" style="color:var(--gold)">AUTH SIGNING TEST</h3>'+
+    '<button class="btn btn-ghost btn-sm" id="auth-close"><i class="fas fa-times"></i></button></div>'+
+    '<div id="auth-content" style="font-size:10px"><i class="fas fa-spinner fa-spin"></i> Testing 4 signing path formats...</div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#auth-close').addEventListener('click',function(){overlay.remove()});
+
+  fetch('/api/auth-test')
+    .then(function(r){return r.json()})
+    .then(function(report){
+      var html='';
+      // Show verdict
+      var verdictColor=report.verdict==='auth_working'?'var(--accent)':'var(--danger)';
+      var verdictText=report.verdict==='auth_working'?'AUTH WORKS':report.verdict==='key_mismatch'?'KEY MISMATCH':report.verdict==='no_creds'?'NO CREDENTIALS':'MIXED ERRORS';
+      html+='<div class="p-3 rounded mb-3" style="background:var(--surface);border-left:3px solid '+verdictColor+'">'+
+        '<b style="color:'+verdictColor+';font-size:12px">Verdict: '+verdictText+'</b><br>'+
+        '<span style="color:var(--dim)">'+(report.summary||'')+'</span></div>';
+
+      // Show credential info
+      if(report.keyId){
+        html+='<div class="p-2 rounded mb-3" style="background:var(--surface)">'+
+          '<b style="color:var(--cyan)">Credentials detected:</b><br>'+
+          '<span style="color:var(--dim)">Key ID: <code>'+report.keyId+'</code></span><br>'+
+          '<span style="color:var(--dim)">PEM length: '+report.pemLength+' chars</span><br>'+
+          '<span style="color:var(--dim)">PEM first line: <code>'+report.pemFirstLine+'</code></span></div>';
+      }
+
+      // Show hint if no creds
+      if(report.verdict==='no_creds'){
+        html+='<div class="p-2 rounded mb-3" style="background:var(--gold-bg);border-left:2px solid var(--gold)">'+
+          '<b style="color:var(--gold)">How to fix:</b><br>'+
+          '<span style="color:var(--dim)">'+(report.hint||'')+'</span></div>';
+        if(report.detail){
+          html+='<div class="p-2 rounded" style="background:var(--surface)">'+
+            '<b>Diagnostic details:</b><br>'+
+            '<pre style="color:var(--muted);font-size:9px">'+JSON.stringify(report.detail,null,2)+'</pre></div>';
+        }
+      }
+
+      // Show test results
+      if(report.tests&&report.tests.length){
+        html+='<div class="space-y-2 mt-3">';
+        for(var i=0;i<report.tests.length;i++){
+          var t=report.tests[i];
+          var color=t.ok?'var(--accent)':'var(--danger)';
+          var icon=t.ok?'check-circle':'times-circle';
+          html+='<div class="p-2 rounded" style="background:var(--surface);border-left:3px solid '+color+'">'+
+            '<i class="fas fa-'+icon+'" style="color:'+color+';margin-right:6px"></i>'+
+            '<b>'+t.name+'</b><br>'+
+            '<span style="color:var(--dim)">Sign path: <code>'+t.signPath+'</code></span><br>'+
+            '<span style="color:var(--dim)">HTTP status: '+(t.status||'N/A')+'</span><br>'+
+            '<span style="color:'+(t.ok?'var(--accent)':'var(--danger)')+'">'+t.verdict+'</span>';
+          if(t.response)html+='<br><span style="color:var(--muted);font-size:9px">Response: '+t.response.substring(0,150)+'</span>';
+          html+='</div>';
+        }
+        html+='</div>';
+      }
+
+      // Show hints for key mismatch
+      if(report.hints&&report.hints.length){
+        html+='<div class="p-3 rounded mt-3" style="background:var(--gold-bg);border-left:3px solid var(--gold)">'+
+          '<b style="color:var(--gold)">How to fix (key mismatch):</b><ol style="margin-top:6px;padding-left:20px;color:var(--dim)">';
+        for(var j=0;j<report.hints.length;j++){
+          html+='<li style="margin-bottom:4px">'+report.hints[j]+'</li>';
+        }
+        html+='</ol></div>';
+      }
+
+      document.getElementById('auth-content').innerHTML=html;
+      addLog('[AUTH] Verdict: '+verdictText,report.verdict==='auth_working'?'system':'risk');
+    })
+    .catch(function(e){
+      document.getElementById('auth-content').innerHTML='<div style="color:var(--danger)">Failed: '+e.message+'<br><br>The /api/auth-test endpoint may not be deployed. Redeploy the latest code.</div>';
+      addLog('[AUTH] Failed to run: '+e.message,'risk');
+    });
+}
+
+// ===========================================================================
 // Charts
 // ===========================================================================
 function setupCanvas(cv){var dpr=window.devicePixelRatio||1;var w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return{w:0,h:0,ctx:null};cv.width=w*dpr;cv.height=h*dpr;var ctx=cv.getContext('2d');ctx.scale(dpr,dpr);return{w:w,h:h,ctx:ctx}}
@@ -1333,6 +1419,8 @@ document.addEventListener('DOMContentLoaded',function(){
     }
   });
   document.getElementById('health-btn').addEventListener('click',runHealthCheck);
+  var authBtn=document.getElementById('auth-btn');
+  if(authBtn)authBtn.addEventListener('click',runAuthTest);
   document.getElementById('close-all-btn').addEventListener('click',function(){
     var copy=[].concat(brain.positions).filter(function(p){return p.source==='paper'});
     copy.forEach(function(p){closePos(p.id,'close-all')});

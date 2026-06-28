@@ -60,7 +60,9 @@ export function getKalshiCreds() {
 export function hasKalshiCreds() {
   const c = getKalshiCreds();
   return !!(c.keyId && c.privateKeyPem &&
-    c.privateKeyPem.includes('BEGIN') && c.privateKeyPem.includes('END'));
+    c.privateKeyPem.includes('BEGIN') &&
+    c.privateKeyPem.includes('PRIVATE KEY') &&  // Must be PRIVATE, not PUBLIC
+    c.privateKeyPem.includes('END'));
 }
 
 // ---------------------------------------------------------------------------
