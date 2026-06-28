@@ -1,57 +1,110 @@
-# Kalshi AI Brain — FABLE ELITE v8.1
+# Kalshi AI Brain — FABLE ELITE v8.2
 
 Autonomous AI trading brain for **Kalshi** (CFTC-registered, US-legal). The brain researches live markets, scores them on Bayesian edge + momentum + volume, runs explicit risk gates, and auto-executes orders within your $30–40 per-order cap and $50 total investment.
 
 ---
 
-## ✅ ROOT CAUSE FOUND — wrong API hostname (v8.1 fix)
+## What was fixed in v8.2
 
-**Previous versions used `api.kalshi.com` — that hostname does not exist in DNS.** Google DNS returned `NXDOMAIN` (Status 3 = "domain does not exist") for `api.kalshi.com`. That's why every platform failed with `ENOTFOUND`.
+Three bugs were causing the "token_authentication_failure" errors:
 
-**The correct hostname is `api.elections.kalshi.com`.** All 5 DNS resolution methods now pass:
-- ✅ `dns.lookup` resolves to `3.169.71.42 (AWS CloudFront, 4 IPs)`
-- ✅ `dns.resolve4` resolves to the same IPs
-- ✅ Google DoH resolves successfully
-- ✅ Cloudflare DoH resolves successfully
-- ✅ TCP connect to port 443 succeeds
+1. **Wrong API hostname** (v8.1 fix): `api.kalshi.com` doesn't exist in DNS. The correct hostname is `api.elections.kalshi.com` (Kalshi moved their API).
 
-**This works on Vercel, Railway, Render, AND your laptop.** The "cloud platform block" theory was wrong — Kalshi doesn't block cloud IPs, we just had the wrong hostname. Apologies for the runaround.
+2. **Wrong RSA padding** (v8.2 fix — THE AUTH FIX): Kalshi's official SDK uses **RSA-PSS** padding, but Node's `crypto.createSign('RSA-SHA256')` defaults to **PKCS1v15**. We were generating signatures with the wrong padding scheme. Now explicitly passing `RSA_PKCS1_PSS_PADDING` to match Kalshi's spec.
 
----
+3. **Wrong signing path** (v8.2 fix): Kalshi expects the full path (`/trade-api/v2/portfolio/balance`) in the signature, not the short path (`/portfolio/balance`).
 
-## Deploy anywhere — pick your platform
-
-### Option 1 — Vercel (5 minutes)
-1. Push this folder to GitHub.
-2. Import at <https://vercel.com/new>.
-3. **Framework Preset** → *Other*. Leave Build/Output/Install empty.
-4. Click **Deploy**.
-5. In Vercel → Settings → Environment Variables → Production, add:
-   - `KALSHI_KEY_ID`
-   - `KALSHI_PRIVATE_KEY_PEM` (full PEM with newlines)
-6. Redeploy.
-
-### Option 2 — Render (5 minutes)
-1. Push to GitHub (must include `render.yaml`).
-2. Go to <https://render.com> → New → Blueprint → select repo → Apply.
-3. Add `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` in Render's Environment tab.
-
-### Option 3 — Railway (5 minutes)
-1. Push to GitHub.
-2. Go to <https://railway.app> → New Project → Deploy from GitHub repo.
-3. Add env vars in Variables tab.
-
-### Option 4 — Run locally (most reliable for testing)
-1. Install Node.js LTS from <https://nodejs.org>
-2. Extract the zip, `cd fable-elite`
-3. Create `.env` with `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM`
-4. Run `./start-local.sh` (Mac/Linux) or `npm install && node server.js` (Windows)
-5. Open <http://localhost:3000>
+All three are fixed. The new **Test Auth** button tries 8 combinations (PSS × PKCS1v15 × 4 path formats) and tells you exactly which one works.
 
 ---
 
-## What the AI Brain actually does
-## What the AI Brain actually does
+## Deploy to Railway (5 minutes)
+
+This app is configured for Railway. The `server.js` file is the entry point, `railway.json` configures the deployment, and `package.json` declares the Express dependency.
+
+### Step 1 — Push to GitHub
+
+Push this folder to a GitHub repo. Make sure these files are included:
+- `server.js` (Express server entry point)
+- `railway.json` (Railway config)
+- `package.json` (declares `express` dependency, `type: module`, `start` script)
+- `api/` folder (all the API route handlers)
+- `index.html` (the dashboard)
+
+### Step 2 — Create Railway project
+
+1. Go to <https://railway.app> → sign up (free)
+2. **New Project** → **Deploy from GitHub repo**
+3. Select your repo
+4. Railway auto-detects `package.json` and `railway.json` — no config needed
+5. Wait ~2 minutes for the build to finish
+
+### Step 3 — Set environment variables
+
+In your Railway service → **Variables** tab, add:
+
+| Variable | Value |
+|----------|-------|
+| `KALSHI_KEY_ID` | Your Kalshi Key ID (from Kalshi dashboard → Profile → API Keys) |
+| `KALSHI_PRIVATE_KEY_PEM` | Full contents of `kalshi_private.pem` (including `-----BEGIN RSA PRIVATE KEY-----` and `-----END RSA PRIVATE KEY-----` lines, with real newlines) |
+
+Railway auto-redeploys when you save the variables.
+
+### Step 4 — Open the dashboard
+
+Click the Railway-generated URL (e.g. `https://your-app.up.railway.app`). The platform badge should show `RAILWAY` (green).
+
+### Step 5 — Test connection
+
+Click **Test Connection** → all 6 health checks should pass:
+1. DNS resolves api.elections.kalshi.com
+2. General internet reachable (google.com)
+3. Kalshi API reachable (markets endpoint)
+4. Kalshi credentials set
+5. PEM signs request
+6. Kalshi accepts auth (balance fetch)
+
+If step 6 fails, click **Test Auth (signing)** to run the 8-combination diagnostic.
+
+---
+
+## Kalshi API key setup
+
+1. Create an account at <https://kalshi.com> and complete KYC (SSN + ID).
+2. Generate an RSA keypair locally:
+   ```bash
+   openssl genrsa -out kalshi_private.pem 2048
+   openssl rsa -in kalshi_private.pem -pubout -out kalshi_public.pem
+   ```
+3. In your Kalshi dashboard, go to **Profile → API Keys → Add Key**, upload `kalshi_public.pem`, copy the **Key ID** it returns.
+4. In Railway → Variables, add:
+   - `KALSHI_KEY_ID` = the Key ID from step 3
+   - `KALSHI_PRIVATE_KEY_PEM` = full contents of `kalshi_private.pem`
+
+**Important:** The public key on Kalshi AND the private key in Railway must come from the SAME `openssl genrsa` invocation. If you regenerate one without the other, they won't match and you'll get `token_authentication_failure`.
+
+---
+
+## If you still get 401 "token_authentication_failure"
+
+If Test Auth shows ALL 8 combinations failing, your private key does not match the public key on Kalshi. Fix it by regenerating the keypair:
+
+1. **Generate a NEW keypair** (don't reuse the old one):
+   ```bash
+   openssl genrsa -out kalshi_private.pem 2048
+   openssl rsa -in kalshi_private.pem -pubout -out kalshi_public.pem
+   ```
+2. **In Kalshi dashboard** (Profile → API Keys):
+   - DELETE the existing key
+   - Click "Add Key" and upload the NEW `kalshi_public.pem`
+   - Copy the new Key ID
+3. **In Railway** (Variables tab):
+   - Update `KALSHI_KEY_ID` to the new Key ID
+   - Update `KALSHI_PRIVATE_KEY_PEM` with the contents of the NEW `kalshi_private.pem`
+4. Railway auto-redeploys. Open the dashboard → Test Auth → should now show AUTH WORKS.
+
+---
+
 
 Every scan cycle (default 30 seconds), the brain runs a 5-stage pipeline:
 
@@ -333,17 +386,17 @@ If `actual_notional` falls below $30, the brain bumps `contracts` up to `ceil(30
 
 ```bash
 # ✅ Allowed — $35.00 notional
-curl -X POST https://your-app.vercel.app/api/order \
+curl -X POST https://your-app.up.railway.app/api/order \
   -H "Content-Type: application/json" \
   -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":35,"size":100}'
 
 # ❌ Rejected — $25.00 below $30 minimum
-curl -X POST https://your-app.vercel.app/api/order \
+curl -X POST https://your-app.up.railway.app/api/order \
   -H "Content-Type: application/json" \
   -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":25,"size":100}'
 
 # ❌ Rejected — $45.00 above $40 maximum
-curl -X POST https://your-app.vercel.app/api/order \
+curl -X POST https://your-app.up.railway.app/api/order \
   -H "Content-Type: application/json" \
   -d '{"market":"KXBTC-26DEC31-B500000","side":"yes","price":45,"size":100}'
 ```
@@ -354,7 +407,7 @@ curl -X POST https://your-app.vercel.app/api/order \
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Brain shows "Kalshi API not configured" on load | Env vars missing or set on wrong environment | Vercel → Settings → Environment Variables → ensure both `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` exist for **Production**. Then Redeploy. |
+| Brain shows "Kalshi API not configured" on load | Env vars missing or set on wrong environment | Railway → Variables → ensure both `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` exist. Railway auto-redeploys when you save them. |
 | Brain runs but never TRADES, only HOLD/SKIP | Signals not strong enough, or risk gates failing | Check the Decision Log — it tells you exactly which gate failed. Lower `Min Confidence` in Config tab if needed. |
 | Brain logs SKIP "Risk gates failed: Budget" | Cash available < $30 | You already have a position open (max 1 concurrent). Wait for it to close, or increase investment cap. |
 | Brain logs SKIP "Risk gates failed: Cap" | Computed notional can't fit in $30–40 at current price | Market price is too extreme (very high or very low). Brain will retry next cycle with different markets. |
@@ -371,14 +424,11 @@ curl -X POST https://your-app.vercel.app/api/order \
 ```
 .
 ├── index.html           Dashboard with AI Brain tab
-├── server.js            Express server (for Render/Railway/local — Vercel doesn't need this)
+├── server.js            Express server (Railway entry point)
 ├── start-local.sh       One-command local runner (Mac/Linux)
-├── render.yaml          Render Blueprint for one-click deploy
 ├── railway.json         Railway config
-├── package.json         Express dependency (for non-Vercel platforms)
-├── vercel.json          Vercel config (DO NOT USE — Vercel blocks Kalshi DNS)
+├── package.json         Express dependency
 ├── .gitignore
-├── .renderignore
 ├── .env.example         Kalshi API key template
 ├── api/
 │   ├── proxy.js         Public Kalshi market data (with retry + fallback)

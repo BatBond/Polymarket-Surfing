@@ -11,23 +11,54 @@ import { URL } from 'node:url';
 
 // ---------------------------------------------------------------------------
 // Kalshi — RSA-SHA256 request signing
-// https://kalshi.com/docs/api/trading-api
+// https://docs.kalshi.com/api-overview#authentication
 // ---------------------------------------------------------------------------
+// Kalshi's official SDK (kalshi-python) uses RSA-PSS padding with SHA-256,
+// NOT PKCS1v15. Node's crypto.createSign('RSA-SHA256') defaults to PKCS1v15,
+// so we must explicitly pass RSA_PKCS1_PSS_PADDING to the sign() call.
+//
 // Generate a keypair locally (see README "Kalshi Setup"):
 //   openssl genrsa -out kalshi_private.pem 2048
 //   openssl rsa -in kalshi_private.pem -pubout -out kalshi_public.pem
 // Upload kalshi_public.pem to your Kalshi account dashboard.
 // Store kalshi_private.pem contents in KALSHI_PRIVATE_KEY_PEM env var.
 //
-// Signature = base64( RSA-SHA256( `${timestamp}\n${METHOD}\n${path}` ) )
+// Signature = base64( RSA-PSS-SHA256( `${timestamp}\n${METHOD}\n${path}` ) )
 // ---------------------------------------------------------------------------
 
 export function kalshiHeaders({ keyId, privateKeyPem }, method, path) {
   const timestamp = new Date().toISOString();
+  const message = `${timestamp}\n${method.toUpperCase()}\n${path}`;
   const signer = crypto.createSign('RSA-SHA256');
-  signer.update(`${timestamp}\n${method.toUpperCase()}\n${path}`);
+  signer.update(message);
   signer.end();
-  const signature = signer.sign(privateKeyPem, 'base64');
+  // CRITICAL: Kalshi uses RSA-PSS padding (not PKCS1v15).
+  // saltLength: RSA_PSS_SALTLEN_MAX matches Kalshi's SDK (padding.PSS.MAX_LENGTH in Python).
+  const signature = signer.sign({
+    key: privateKeyPem,
+    padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+    saltLength: crypto.constants.RSA_PSS_SALTLEN_MAX,
+  }, 'base64');
+
+  return {
+    'Kalshi-Access-Key-Id': keyId,
+    'Kalshi-Signature': signature,
+    'Kalshi-Timestamp': timestamp,
+  };
+}
+
+// Variant that uses PKCS1v15 padding (older Kalshi spec, kept for fallback
+// testing in /api/auth-test). Not used in production calls.
+export function kalshiHeadersPkcs1v15({ keyId, privateKeyPem }, method, path) {
+  const timestamp = new Date().toISOString();
+  const message = `${timestamp}\n${method.toUpperCase()}\n${path}`;
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(message);
+  signer.end();
+  const signature = signer.sign({
+    key: privateKeyPem,
+    padding: crypto.constants.RSA_PKCS1_PADDING,
+  }, 'base64');
 
   return {
     'Kalshi-Access-Key-Id': keyId,
