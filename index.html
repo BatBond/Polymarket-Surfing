@@ -88,10 +88,71 @@ table.dt tr:hover td{background:var(--card2)}
 <div class="text-right"><p class="lbl" style="margin:0">P&L</p><p class="mono text-sm font-bold" id="h-pnl">$0</p></div>
 <div class="text-right"><p class="lbl" style="margin:0">POSITIONS</p><p class="mono text-sm font-bold" id="h-pos">0</p></div>
 <div class="text-right"><p class="lbl" style="margin:0">BRAIN</p><p class="mono text-sm font-bold" style="color:var(--purple)" id="h-brain">IDLE</p></div>
+<div id="platform-badge" class="badge" style="background:var(--surface);color:var(--muted);border:1px solid var(--border)"><i class="fas fa-server text-[5px]"></i> DETECTING…</div>
 <div id="status-badge" class="badge badge-red"><i class="fas fa-circle text-[5px]"></i> OFFLINE</div>
 </div></div></header>
 
 <main class="max-w-[1800px] mx-auto px-3 py-3 relative" style="z-index:1">
+
+<!-- Platform warning banner (hidden by default, shown if Vercel detected) -->
+<div id="vercel-banner" style="display:none;background:linear-gradient(90deg,#7f1d1d,#991b1b);border:2px solid #ef4444;border-radius:10px;padding:14px;margin-bottom:12px;animation:pulse 2s infinite">
+  <div style="display:flex;align-items:flex-start;gap:12px">
+    <i class="fas fa-triangle-exclamation" style="color:#fca5a5;font-size:24px;margin-top:2px"></i>
+    <div style="flex:1">
+      <h2 style="color:#fff;font-size:14px;font-weight:700;margin-bottom:6px;letter-spacing:0.05em">⚠️ RUNNING ON VERCEL — KALSHI IS BLOCKED HERE</h2>
+      <p style="color:#fecaca;font-size:11px;line-height:1.5;margin-bottom:8px">
+        Vercel's serverless runtime blocks DNS resolution for <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code>.
+        You can see it in Test Connection: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">google.com</code> works but <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code> fails with <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">EBUSY</code>.
+        <b style="color:#fff">No code change will fix this.</b> You must move to a different platform.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <a href="https://render.com" target="_blank" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+          <i class="fas fa-arrow-right"></i> Deploy to Render (recommended)
+        </a>
+        <a href="https://railway.app" target="_blank" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
+          <i class="fas fa-arrow-right"></i> Deploy to Railway
+        </a>
+        <button id="show-local-instructions" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+          <i class="fas fa-laptop"></i> Or run on your laptop
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Local run instructions modal (hidden by default) -->
+<div id="local-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;padding:20px;overflow-y:auto">
+  <div class="card" style="max-width:650px;margin:40px auto;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="color:var(--accent);font-size:14px;font-weight:700">Run on your laptop (5 minutes)</h3>
+      <button id="close-local-modal" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="font-size:11px;line-height:1.6;color:var(--dim)">
+      <p style="margin-bottom:10px"><b style="color:var(--text)">Your home internet is NOT subject to Vercel's DNS blocks.</b> Running locally is the most reliable option.</p>
+
+      <p style="color:var(--accent);margin-top:14px;margin-bottom:6px"><b>Step 1:</b> Install Node.js LTS from <a href="https://nodejs.org" target="_blank" style="color:var(--accent)">nodejs.org</a></p>
+
+      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 2:</b> Download this project's zip, extract it, open Terminal:</p>
+      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">cd /path/to/fable-elite</pre>
+
+      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 3:</b> Create a file named <code style="background:var(--surface);padding:1px 4px;border-radius:3px">.env</code> in that folder with your Kalshi creds:</p>
+      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">KALSHI_KEY_ID=your_key_id_here
+KALSHI_PRIVATE_KEY_PEM=-----BEGIN RSA PRIVATE KEY-----
+...your full PEM contents...
+-----END RSA PRIVATE KEY-----</pre>
+
+      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 4:</b> Start the server:</p>
+      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">./start-local.sh</pre>
+
+      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 5:</b> Open <a href="http://localhost:3000" target="_blank" style="color:var(--accent)">http://localhost:3000</a> — Test Connection will pass.</p>
+
+      <p style="color:var(--gold);margin-top:14px"><b>Want a public URL?</b> Install <a href="https://github.com/cloudflare/cloudflared" target="_blank" style="color:var(--gold)">cloudflared</a>, then in another terminal:</p>
+      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--gold);font-size:10px;margin:4px 0">cloudflared tunnel --url http://localhost:3000</pre>
+      <p style="color:var(--muted);font-size:10px;margin-top:4px">You'll get a public <code>*.trycloudflare.com</code> URL reachable from anywhere.</p>
+    </div>
+  </div>
+</div>
+
 <section class="grid gap-2 mb-3" style="grid-template-columns:repeat(10,1fr)">
 <div class="card p-2 anim-in" style="animation-delay:.03s"><p class="lbl">Investment</p><p class="mono text-xs font-bold" style="color:var(--gold)" id="s-pv">$0</p></div>
 <div class="card p-2 anim-in" style="animation-delay:.05s"><p class="lbl">Session P&L</p><p class="mono text-xs font-bold" id="s-pnl">$0</p></div>
@@ -1042,7 +1103,7 @@ function runHealthCheck(){
         '<span style="color:var(--dim)">'+
         (report.overall==='ok'?
           'Everything works. Start the AI Brain in LIVE mode to begin trading.':
-          'Fix the failing steps above, then click "Test Connection" again. After fixing env vars in Vercel, you MUST redeploy for changes to take effect.')+
+          'Fix the failing steps above, then click "Test Connection" again. If running on Vercel (see the red banner at the top), you MUST move to Render/Railway or run locally — Vercel blocks Kalshi DNS and no code change will fix it. After changing env vars, redeploy for changes to take effect.')+
         '</span></div>';
       document.getElementById('health-content').innerHTML=html;
       addLog('[HEALTH] Result: '+report.overall.toUpperCase()+' ('+report.steps.filter(function(s){return s.pass}).length+'/'+report.steps.length+' steps passed)',report.overall==='ok'?'system':'risk');
@@ -1300,11 +1361,75 @@ document.addEventListener('DOMContentLoaded',function(){
           addLog('Kalshi API reachable but balance $0 — using $50 investment cap','system');
         }
       } else {
-        addLog('Kalshi API not configured. Set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM in Vercel env vars.','system');
+        addLog('Kalshi API not configured. Set KALSHI_KEY_ID and KALSHI_PRIVATE_KEY_PEM in env vars.','system');
         addLog('Until then, AI Brain runs in PAPER mode only (no real orders).','system');
       }
     }).catch(function(){addLog('Could not reach /api/balance — running offline','system')});
   },800);
+
+  // === Platform detection — show giant red banner if on Vercel ===
+  setTimeout(function(){
+    fetch('/api/platform').then(function(r){return r.json()}).then(function(d){
+      var badge=document.getElementById('platform-badge');
+      var banner=document.getElementById('vercel-banner');
+      if(!badge)return;
+
+      if(d.platform==='vercel'){
+        // Show giant red banner — Vercel blocks Kalshi DNS
+        if(banner)banner.style.display='block';
+        badge.className='badge badge-red';
+        badge.innerHTML='<i class="fas fa-triangle-exclamation text-[5px]"></i> VERCEL · KALSHI BLOCKED';
+        addLog('[PLATFORM] Vercel detected — Kalshi DNS is blocked here. LIVE trading will NOT work. Move to Render/Railway or run locally.','risk');
+        showToast('⚠️ Running on Vercel — Kalshi is blocked. See banner above.','error');
+      } else if(d.platform==='render'){
+        badge.className='badge badge-green';
+        badge.innerHTML='<i class="fas fa-check-circle text-[5px]"></i> RENDER';
+        addLog('[PLATFORM] Running on Render — Kalshi DNS should work','system');
+      } else if(d.platform==='railway'){
+        badge.className='badge badge-green';
+        badge.innerHTML='<i class="fas fa-check-circle text-[5px]"></i> RAILWAY';
+        addLog('[PLATFORM] Running on Railway — Kalshi DNS should work','system');
+      } else {
+        badge.className='badge badge-green';
+        badge.innerHTML='<i class="fas fa-laptop text-[5px]"></i> LOCAL';
+        addLog('[PLATFORM] Running locally — Kalshi DNS should work','system');
+      }
+
+      // Also surface DNS result
+      if(d.dns){
+        if(d.dns.resolves){
+          addLog('[PLATFORM] DNS check: api.kalshi.com resolves to '+d.dns.addresses.join(', '),'system');
+        } else {
+          addLog('[PLATFORM] DNS check FAILED: '+d.dns.error,'risk');
+          // If DNS fails on non-Vercel platform, also show banner with modified text
+          if(d.platform!=='vercel'&&banner){
+            banner.style.display='block';
+            var h2=banner.querySelector('h2');
+            var p=banner.querySelector('p');
+            if(h2)h2.textContent='⚠️ DNS RESOLUTION FAILED ON '+d.platform.toUpperCase();
+            if(p)p.innerHTML='Your platform (<b>'+d.platform+'</b>) cannot resolve <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code>. Error: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">'+d.dns.error+'</code>. Try running locally instead — your home internet is not subject to cloud platform DNS blocks.';
+          }
+        }
+      }
+    }).catch(function(e){
+      var badge=document.getElementById('platform-badge');
+      if(badge){
+        badge.className='badge';
+        badge.style.background='var(--surface)';
+        badge.style.color='var(--muted)';
+        badge.innerHTML='<i class="fas fa-question text-[5px]"></i> UNKNOWN';
+      }
+      addLog('[PLATFORM] Could not determine platform: '+e.message,'system');
+    });
+  },300);
+
+  // Wire up the local-instructions modal
+  var showLocalBtn=document.getElementById('show-local-instructions');
+  var localModal=document.getElementById('local-modal');
+  var closeLocalBtn=document.getElementById('close-local-modal');
+  if(showLocalBtn)showLocalBtn.addEventListener('click',function(){if(localModal)localModal.style.display='block'});
+  if(closeLocalBtn)closeLocalBtn.addEventListener('click',function(){if(localModal)localModal.style.display='none'});
+  if(localModal)localModal.addEventListener('click',function(e){if(e.target===localModal)localModal.style.display='none'});
 });
 
 window.addEventListener('resize',function(){clearTimeout(window._rt);window._rt=setTimeout(drawCharts,150)});
