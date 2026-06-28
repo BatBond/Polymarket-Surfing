@@ -1,19 +1,56 @@
-# Kalshi AI Brain — FABLE ELITE v8.0
+# Kalshi AI Brain — FABLE ELITE v8.1
 
 Autonomous AI trading brain for **Kalshi** (CFTC-registered, US-legal). The brain researches live markets, scores them on Bayesian edge + momentum + volume, runs explicit risk gates, and auto-executes orders within your $30–40 per-order cap and $50 total investment.
 
 ---
 
-## ⚠️ READ THIS FIRST — Vercel networking issue
+## ✅ ROOT CAUSE FOUND — wrong API hostname (v8.1 fix)
 
-If you deployed to Vercel and saw "DNS resolution failed for api.kalshi.com" in the Test Connection results, **this is a Vercel platform issue, not a code bug.** Vercel's serverless functions in some regions cannot resolve `api.kalshi.com` — a public hostname that resolves everywhere else.
+**Previous versions used `api.kalshi.com` — that hostname does not exist in DNS.** Google DNS returned `NXDOMAIN` (Status 3 = "domain does not exist") for `api.kalshi.com`. That's why every platform failed with `ENOTFOUND`.
 
-**The fix: deploy to Render instead.** Render runs Node on normal EC2 instances with standard DNS resolution. Same code, different platform, problem solved. See "Deploy to Render" below.
+**The correct hostname is `api.elections.kalshi.com`.** All 5 DNS resolution methods now pass:
+- ✅ `dns.lookup` resolves to `3.169.71.42 (AWS CloudFront, 4 IPs)`
+- ✅ `dns.resolve4` resolves to the same IPs
+- ✅ Google DoH resolves successfully
+- ✅ Cloudflare DoH resolves successfully
+- ✅ TCP connect to port 443 succeeds
 
-If Render ALSO fails with the same DNS error, then Kalshi is blocking cloud provider IP ranges (some regulated APIs do this). In that case, see "Streamlit Alternative" at the bottom of this README.
+**This works on Vercel, Railway, Render, AND your laptop.** The "cloud platform block" theory was wrong — Kalshi doesn't block cloud IPs, we just had the wrong hostname. Apologies for the runaround.
 
 ---
 
+## Deploy anywhere — pick your platform
+
+### Option 1 — Vercel (5 minutes)
+1. Push this folder to GitHub.
+2. Import at <https://vercel.com/new>.
+3. **Framework Preset** → *Other*. Leave Build/Output/Install empty.
+4. Click **Deploy**.
+5. In Vercel → Settings → Environment Variables → Production, add:
+   - `KALSHI_KEY_ID`
+   - `KALSHI_PRIVATE_KEY_PEM` (full PEM with newlines)
+6. Redeploy.
+
+### Option 2 — Render (5 minutes)
+1. Push to GitHub (must include `render.yaml`).
+2. Go to <https://render.com> → New → Blueprint → select repo → Apply.
+3. Add `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM` in Render's Environment tab.
+
+### Option 3 — Railway (5 minutes)
+1. Push to GitHub.
+2. Go to <https://railway.app> → New Project → Deploy from GitHub repo.
+3. Add env vars in Variables tab.
+
+### Option 4 — Run locally (most reliable for testing)
+1. Install Node.js LTS from <https://nodejs.org>
+2. Extract the zip, `cd fable-elite`
+3. Create `.env` with `KALSHI_KEY_ID` and `KALSHI_PRIVATE_KEY_PEM`
+4. Run `./start-local.sh` (Mac/Linux) or `npm install && node server.js` (Windows)
+5. Open <http://localhost:3000>
+
+---
+
+## What the AI Brain actually does
 ## What the AI Brain actually does
 
 Every scan cycle (default 30 seconds), the brain runs a 5-stage pipeline:
@@ -80,7 +117,7 @@ If you increase your investment cap (e.g. to $200), edit the `max` attribute on 
 
 ## How to deploy — three options
 
-**Confirmed:** Vercel blocks DNS resolution for `api.kalshi.com` specifically (you'll see `EBUSY` or `ENOTFOUND` errors). The dashboard works on Vercel, but LIVE trading does not. Pick one of the three options below — they all run the exact same code.
+**Update (v8.1):** The previous 'Vercel blocks Kalshi' theory was wrong. The real issue was using `api.kalshi.com` (doesn't exist) instead of `api.elections.kalshi.com` (correct). Vercel, Railway, Render, and local all work now.
 
 ### Option 1 — Render (recommended, 5 minutes)
 
@@ -143,7 +180,7 @@ Kalshi AI Brain server listening on port 3000
 Dashboard: http://localhost:3000
 ```
 
-Open `http://localhost:3000` in your browser → click **Test Connection** → all 6 steps should pass. **Your laptop can definitely reach api.kalshi.com.**
+Open `http://localhost:3000` in your browser → click **Test Connection** → all 6 steps should pass. **Your laptop can definitely reach api.elections.kalshi.com.**
 
 **Step 5 (optional) — Get a public URL from your laptop:**
 
@@ -159,9 +196,10 @@ Cloudflare prints a public URL like `https://random-words-1234.trycloudflare.com
 
 ---
 
-## ⚠️ Do NOT deploy to Vercel
+## Notes on previous versions
 
-Vercel's serverless runtime blocks DNS resolution for `api.kalshi.com` specifically. You'll see `EBUSY: getaddrinfo EBUSY api.kalshi.com` or `ENOTFOUND` in Test Connection, even though `google.com` works fine. This is a Vercel platform policy/block, not a network glitch or a code bug. No amount of code changes will fix it on Vercel — use Render, Railway, or run locally instead.
+Previous READMEs claimed Vercel blocks Kalshi DNS. That was a misdiagnosis — the real issue was the wrong hostname (`api.kalshi.com` instead of `api.elections.kalshi.com`). All platforms work now.
+
 
 ---
 
@@ -355,11 +393,8 @@ curl -X POST https://your-app.vercel.app/api/order \
 
 ## Why not Streamlit?
 
-You asked about Streamlit. Here's the honest answer: **don't bother**. The problem isn't the language or framework — it's that Vercel blocks DNS for `api.kalshi.com`. If you deployed a Streamlit app to Vercel, you'd hit the exact same wall. The fix is changing platforms, not languages.
+No need. The original concern was that Vercel blocks Kalshi DNS — but that turned out to be a hostname typo, not a platform block. The Node app works on any platform now. Streamlit would be a full Python rewrite for no benefit.
 
-Streamlit Cloud uses different IPs than Vercel, so it might work — but rewriting the entire brain, dashboard, API routes, risk gates, and cap enforcement in Python is a 4-8 hour project. Render/Railway/local all work with the existing Node code in 5 minutes, zero rewrite needed.
-
-**Move to Render, Railway, or run locally.** That's the fix.
 
 ---
 

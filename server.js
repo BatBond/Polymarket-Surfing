@@ -17,6 +17,7 @@ import balanceHandler from './api/balance.js';
 import proxyHandler from './api/proxy.js';
 import healthHandler from './api/health.js';
 import platformHandler from './api/platform.js';
+import dnsTestHandler from './api/dns-test.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +34,7 @@ app.use(express.static(__dirname));
 // API routes
 app.get('/api/health', healthHandler);
 app.get('/api/platform', platformHandler);
+app.get('/api/dns-test', dnsTestHandler);
 app.get('/api/balance', balanceHandler);
 app.get('/api/proxy', proxyHandler);
 app.post('/api/order', orderHandler);

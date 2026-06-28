@@ -5,7 +5,7 @@
 // GET /api/proxy?endpoint=markets?status=open&limit=50
 //
 // The `endpoint` query param is appended verbatim to
-// https://api.kalshi.com/trade-api/v2/
+// https://api.elections.kalshi.com/trade-api/v2/
 //
 // Kalshi's /v2/markets endpoint requires authentication in practice. We
 // include the Kalshi RSA auth headers if env vars are set.
@@ -13,7 +13,7 @@
 
 import { kalshiHeaders, getKalshiCreds, fetchWithRetry } from './keys.js';
 
-const BASE_URL = 'https://api.kalshi.com/trade-api/v2';
+const BASE_URL = 'https://api.elections.kalshi.com/trade-api/v2';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

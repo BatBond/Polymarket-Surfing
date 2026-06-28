@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   try {
     let balHeaders;
     try {
-      balHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balances');
+      balHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balance');
     } catch (signErr) {
       return res.status(500).json({
         error: 'Failed to sign request with KALSHI_PRIVATE_KEY_PEM',
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     }
 
     const balResult = await fetchWithRetry(
-      'https://api.kalshi.com/trade-api/v2/portfolio/balances',
+      'https://api.elections.kalshi.com/trade-api/v2/portfolio/balance',
       { headers: balHeaders }
     );
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         cause: cause,
         attempts: balResult.attempts,
         hint: cause === 'ENOTFOUND' ?
-          'DNS resolution failed for api.kalshi.com after multiple attempts. Try redeploying.' :
+          'DNS resolution failed for api.elections.kalshi.com after multiple attempts. Try redeploying.' :
           'Check Vercel function logs.',
       });
     }
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
     try {
       const posHeaders = kalshiHeaders(creds, 'GET', '/portfolio/positions');
       const posResult = await fetchWithRetry(
-        'https://api.kalshi.com/trade-api/v2/portfolio/positions',
+        'https://api.elections.kalshi.com/trade-api/v2/portfolio/positions',
         { headers: posHeaders }
       );
       if (posResult.ok) positions = posResult.data;

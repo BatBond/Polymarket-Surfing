@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     };
 
     const result = await fetchWithRetry(
-      'https://api.kalshi.com/trade-api/v2' + path,
+      'https://api.elections.kalshi.com/trade-api/v2' + path,
       { method: 'POST', headers, body }
     );
 
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
         cause: cause,
         attempts: result.attempts,
         hint: cause === 'ENOTFOUND' ?
-          'DNS resolution failed for api.kalshi.com after multiple attempts. This is unusual — try redeploying. If it persists, the Vercel region may have network issues reaching Kalshi.' :
+          'DNS resolution failed for api.elections.kalshi.com after multiple attempts. This is unusual — try redeploying. If it persists, the Vercel region may have network issues reaching Kalshi.' :
           cause === 'UND_ERR_CONNECT_TIMEOUT' || cause === 'ETIMEDOUT' ?
           'Connection timed out. Kalshi may be slow or blocking Vercel IPs.' :
           'Check Vercel function logs. The node:https fallback was also tried.',

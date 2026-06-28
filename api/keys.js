@@ -118,19 +118,43 @@ export async function fetchWithRetry(url, options = {}, maxRetries = 3) {
     }
   }
 
-  // All fetch() attempts failed — try node:https as a last resort
-  // (works around Node's built-in fetch TLS/HTTP2 issues with some hosts)
+  // All fetch() attempts failed — try DoH-resolved IP first, then node:https
+  // (works around cloud platform DNS blocks for api.elections.kalshi.com specifically)
   if (lastError && (lastError.cause === 'ENOTFOUND' || lastError.cause === 'ECONNREFUSED' ||
       lastError.cause === 'UND_ERR_CONNECT_TIMEOUT' || lastError.cause === 'ETIMEDOUT' ||
       lastError.message.includes('fetch failed'))) {
 
-    console.log('[fetchWithRetry] All fetch() attempts failed, trying node:https fallback...');
+    // ATTEMPT A: Try DNS-over-HTTPS resolution + fetch with custom agent
+    // This bypasses the platform's local DNS entirely.
+    try {
+      const { makeDoHAgent } = await import('./doh-client.js');
+      const urlObj = new URL(url);
+      const agentResult = await makeDoHAgent(urlObj.hostname);
+      if (agentResult) {
+        console.log(`[fetchWithRetry] Trying DoH-resolved IP ${agentResult.ip} for ${urlObj.hostname}...`);
+        const dohRes = await fetch(url, {
+          ...options,
+          agent: agentResult.agent,
+        });
+        const text = await dohRes.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = text; }
+        attempts.push({ attempt: 'doh-fallback', ip: agentResult.ip, status: dohRes.status, ok: dohRes.ok });
+        return { ok: dohRes.ok, status: dohRes.status, data, attempts, dohUsed: true, ip: agentResult.ip };
+      }
+    } catch (dohErr) {
+      console.log('[fetchWithRetry] DoH fallback failed:', dohErr.message);
+      attempts.push({ attempt: 'doh-fallback', error: dohErr.message });
+    }
+
+    // ATTEMPT B: node:https direct call (bypasses undici entirely)
+    console.log('[fetchWithRetry] Trying node:https fallback...');
     try {
       const fallback = await fetchWithNodeHttps(url, options);
-      attempts.push({ attempt: 'fallback', status: fallback.status, ok: fallback.ok });
+      attempts.push({ attempt: 'node-https-fallback', status: fallback.status, ok: fallback.ok });
       return { ...fallback, attempts };
     } catch (fallbackErr) {
-      attempts.push({ attempt: 'fallback', error: { message: fallbackErr.message } });
+      attempts.push({ attempt: 'node-https-fallback', error: { message: fallbackErr.message } });
       lastError.fallbackTried = true;
       lastError.fallbackError = fallbackErr.message;
     }

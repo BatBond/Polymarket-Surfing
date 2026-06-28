@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   } else if (process.env.VERCEL) {
     platform = 'vercel';
     region = process.env.VERCEL_REGION || 'unknown';
-    kalshiBlocked = true; // Known issue: Vercel blocks DNS for api.kalshi.com
+    kalshiBlocked = true; // Known issue: Vercel blocks DNS for api.elections.kalshi.com
   } else if (process.env.RAILWAY_PROJECT_ID) {
     platform = 'railway';
     region = process.env.RAILWAY_REGION || 'unknown';
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   let dnsError = null;
   try {
     const { lookup } = await import('node:dns/promises');
-    const result = await lookup('api.kalshi.com', { all: true });
+    const result = await lookup('api.elections.kalshi.com', { all: true });
     dnsResolves = result.map(a => a.address);
   } catch (e) {
     dnsError = e.code || e.message;

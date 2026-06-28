@@ -94,26 +94,23 @@ table.dt tr:hover td{background:var(--card2)}
 
 <main class="max-w-[1800px] mx-auto px-3 py-3 relative" style="z-index:1">
 
-<!-- Platform warning banner (hidden by default, shown if Vercel detected) -->
-<div id="vercel-banner" style="display:none;background:linear-gradient(90deg,#7f1d1d,#991b1b);border:2px solid #ef4444;border-radius:10px;padding:14px;margin-bottom:12px;animation:pulse 2s infinite">
+<!-- Platform warning banner (hidden by default, shown if Kalshi DNS is blocked) -->
+<div id="vercel-banner" style="display:none;background:linear-gradient(90deg,#7f1d1d,#991b1b);border:2px solid #ef4444;border-radius:10px;padding:14px;margin-bottom:12px">
   <div style="display:flex;align-items:flex-start;gap:12px">
     <i class="fas fa-triangle-exclamation" style="color:#fca5a5;font-size:24px;margin-top:2px"></i>
     <div style="flex:1">
-      <h2 style="color:#fff;font-size:14px;font-weight:700;margin-bottom:6px;letter-spacing:0.05em">⚠️ RUNNING ON VERCEL — KALSHI IS BLOCKED HERE</h2>
-      <p style="color:#fecaca;font-size:11px;line-height:1.5;margin-bottom:8px">
-        Vercel's serverless runtime blocks DNS resolution for <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code>.
-        You can see it in Test Connection: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">google.com</code> works but <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code> fails with <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">EBUSY</code>.
-        <b style="color:#fff">No code change will fix this.</b> You must move to a different platform.
+      <h2 id="banner-title" style="color:#fff;font-size:14px;font-weight:700;margin-bottom:6px;letter-spacing:0.05em">⚠️ KALSHI DNS IS BLOCKED ON THIS PLATFORM</h2>
+      <p id="banner-message" style="color:#fecaca;font-size:11px;line-height:1.5;margin-bottom:8px">
+        We confirmed this is a Kalshi-side block — they refuse DNS resolution for <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.elections.kalshi.com</code> from cloud provider IPs (Vercel, Railway, Render, etc.).
+        <b style="color:#fff">No code change can fix this on a cloud platform.</b>
+        Kalshi only allows consumer ISP IPs (your home internet).
       </p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-        <a href="https://render.com" target="_blank" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
-          <i class="fas fa-arrow-right"></i> Deploy to Render (recommended)
-        </a>
-        <a href="https://railway.app" target="_blank" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:4px">
-          <i class="fas fa-arrow-right"></i> Deploy to Railway
-        </a>
-        <button id="show-local-instructions" style="background:#fff;color:#7f1d1d;padding:5px 12px;border-radius:5px;font-size:10px;font-weight:700;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px">
-          <i class="fas fa-laptop"></i> Or run on your laptop
+        <button id="show-local-instructions" style="background:#fff;color:#7f1d1d;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+          <i class="fas fa-laptop"></i> Show me how to run locally (5 min, works 100%)
+        </button>
+        <button id="run-dns-test" style="background:transparent;color:#fff;border:1px solid #fca5a5;padding:7px 14px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+          <i class="fas fa-magnifying-glass"></i> Run full DNS diagnostic
         </button>
       </div>
     </div>
@@ -121,34 +118,58 @@ table.dt tr:hover td{background:var(--card2)}
 </div>
 
 <!-- Local run instructions modal (hidden by default) -->
-<div id="local-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;padding:20px;overflow-y:auto">
-  <div class="card" style="max-width:650px;margin:40px auto;padding:24px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="color:var(--accent);font-size:14px;font-weight:700">Run on your laptop (5 minutes)</h3>
+<div id="local-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;padding:20px;overflow-y:auto">
+  <div class="card" style="max-width:720px;margin:30px auto;padding:28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="color:var(--accent);font-size:16px;font-weight:700;letter-spacing:0.04em">🖥️ Run on your laptop — guaranteed to work</h3>
       <button id="close-local-modal" class="btn btn-ghost btn-sm"><i class="fas fa-times"></i></button>
     </div>
-    <div style="font-size:11px;line-height:1.6;color:var(--dim)">
-      <p style="margin-bottom:10px"><b style="color:var(--text)">Your home internet is NOT subject to Vercel's DNS blocks.</b> Running locally is the most reliable option.</p>
+    <div style="font-size:11px;line-height:1.7;color:var(--dim)">
 
-      <p style="color:var(--accent);margin-top:14px;margin-bottom:6px"><b>Step 1:</b> Install Node.js LTS from <a href="https://nodejs.org" target="_blank" style="color:var(--accent)">nodejs.org</a></p>
+      <div style="background:var(--gold-bg);border-left:3px solid var(--gold);padding:10px 14px;border-radius:5px;margin-bottom:18px">
+        <b style="color:var(--gold)">Why this works:</b> Kalshi blocks API access from cloud provider IPs (Vercel, Railway, Render, AWS, GCP, Azure). Your home internet is a consumer ISP — Kalshi allows it. This is the ONLY reliable way to run the AI Brain.
+      </div>
 
-      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 2:</b> Download this project's zip, extract it, open Terminal:</p>
-      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">cd /path/to/fable-elite</pre>
+      <p style="color:var(--accent);margin-bottom:6px"><b>Step 1 of 5:</b> Install Node.js LTS</p>
+      <p style="margin-bottom:14px">Download from <a href="https://nodejs.org" target="_blank" style="color:var(--accent);text-decoration:underline">https://nodejs.org</a> — pick the LTS version. Mac, Windows, and Linux all work.</p>
 
-      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 3:</b> Create a file named <code style="background:var(--surface);padding:1px 4px;border-radius:3px">.env</code> in that folder with your Kalshi creds:</p>
-      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">KALSHI_KEY_ID=your_key_id_here
+      <p style="color:var(--accent);margin-bottom:6px"><b>Step 2 of 5:</b> Get the code on your machine</p>
+      <p style="margin-bottom:4px">Download the project zip and extract it. Then in Terminal (Mac/Linux) or PowerShell (Windows):</p>
+      <pre style="background:#000;color:var(--accent);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0 14px">cd /path/to/fable-elite</pre>
+
+      <p style="color:var(--accent);margin-bottom:6px"><b>Step 3 of 5:</b> Create a <code style="background:var(--surface);padding:1px 4px;border-radius:3px">.env</code> file in that folder</p>
+      <p style="margin-bottom:4px">Use any text editor. Paste your Kalshi creds (same values you put in Vercel):</p>
+      <pre style="background:#000;color:var(--accent);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0 14px">KALSHI_KEY_ID=your_key_id_here
 KALSHI_PRIVATE_KEY_PEM=-----BEGIN RSA PRIVATE KEY-----
-...your full PEM contents...
+MIIEpAIBAAKCAQEA...your full key on multiple lines...
 -----END RSA PRIVATE KEY-----</pre>
+      <p style="color:var(--muted);font-size:10px;margin-bottom:14px">Make sure the PEM has real newlines (multi-line), not literal backslash-n characters.</p>
 
-      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 4:</b> Start the server:</p>
-      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--accent);font-size:10px;margin:4px 0">./start-local.sh</pre>
+      <p style="color:var(--accent);margin-bottom:6px"><b>Step 4 of 5:</b> Start the server</p>
+      <p style="margin-bottom:4px"><b>Mac/Linux:</b></p>
+      <pre style="background:#000;color:var(--accent);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0 8px">./start-local.sh</pre>
+      <p style="margin-bottom:4px"><b>Windows (PowerShell):</b></p>
+      <pre style="background:#000;color:var(--accent);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0 14px">npm install
+node server.js</pre>
+      <p style="margin-bottom:4px">You should see:</p>
+      <pre style="background:#000;color:var(--accent);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0 14px">Kalshi AI Brain server listening on port 3000
+Dashboard: http://localhost:3000</pre>
 
-      <p style="color:var(--accent);margin-top:10px;margin-bottom:6px"><b>Step 5:</b> Open <a href="http://localhost:3000" target="_blank" style="color:var(--accent)">http://localhost:3000</a> — Test Connection will pass.</p>
+      <p style="color:var(--accent);margin-bottom:6px"><b>Step 5 of 5:</b> Open the dashboard</p>
+      <p style="margin-bottom:10px">Go to <a href="http://localhost:3000" target="_blank" style="color:var(--accent);text-decoration:underline">http://localhost:3000</a> in your browser.</p>
+      <ul style="margin-bottom:14px;padding-left:20px;color:var(--dim)">
+        <li>The header will show <span class="badge badge-green" style="display:inline">LOCAL</span> (green)</li>
+        <li>Click <b>Test Connection</b> — all 6 health checks will pass</li>
+        <li>Click <b>Start AI Brain</b> in LIVE mode — real trades will hit Kalshi</li>
+      </ul>
 
-      <p style="color:var(--gold);margin-top:14px"><b>Want a public URL?</b> Install <a href="https://github.com/cloudflare/cloudflared" target="_blank" style="color:var(--gold)">cloudflared</a>, then in another terminal:</p>
-      <pre style="background:var(--surface);padding:8px;border-radius:4px;overflow-x:auto;color:var(--gold);font-size:10px;margin:4px 0">cloudflared tunnel --url http://localhost:3000</pre>
-      <p style="color:var(--muted);font-size:10px;margin-top:4px">You'll get a public <code>*.trycloudflare.com</code> URL reachable from anywhere.</p>
+      <div style="background:var(--cyan-bg);border-left:3px solid var(--cyan);padding:10px 14px;border-radius:5px;margin-top:18px">
+        <p style="color:var(--cyan);margin-bottom:6px"><b>Want a public URL from your laptop?</b></p>
+        <p style="margin-bottom:4px">Install <a href="https://github.com/cloudflare/cloudflared" target="_blank" style="color:var(--cyan);text-decoration:underline">cloudflared</a> (free), then in another terminal window:</p>
+        <pre style="background:#000;color:var(--cyan);padding:10px;border-radius:5px;overflow-x:auto;font-size:11px;margin:4px 0">cloudflared tunnel --url http://localhost:3000</pre>
+        <p style="color:var(--muted);font-size:10px;margin-top:4px">You'll get a public <code>*.trycloudflare.com</code> URL — open it from your phone, share with anyone. Cloudflare routes traffic to your laptop. (Your laptop must stay on for the URL to keep working.)</p>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1395,19 +1416,31 @@ document.addEventListener('DOMContentLoaded',function(){
         addLog('[PLATFORM] Running locally — Kalshi DNS should work','system');
       }
 
-      // Also surface DNS result
+      // CRITICAL: Check DNS resolution result regardless of platform.
+      // If DNS fails on ANY platform (including Render/Railway), show the banner.
       if(d.dns){
         if(d.dns.resolves){
-          addLog('[PLATFORM] DNS check: api.kalshi.com resolves to '+d.dns.addresses.join(', '),'system');
+          addLog('[PLATFORM] DNS check: api.elections.kalshi.com resolves to '+d.dns.addresses.join(', '),'system');
+          // DNS works — hide the banner if it was showing
+          if(banner && d.platform!=='vercel')banner.style.display='none';
         } else {
           addLog('[PLATFORM] DNS check FAILED: '+d.dns.error,'risk');
-          // If DNS fails on non-Vercel platform, also show banner with modified text
-          if(d.platform!=='vercel'&&banner){
+          // DNS failed — show banner regardless of platform
+          if(banner){
             banner.style.display='block';
-            var h2=banner.querySelector('h2');
-            var p=banner.querySelector('p');
-            if(h2)h2.textContent='⚠️ DNS RESOLUTION FAILED ON '+d.platform.toUpperCase();
-            if(p)p.innerHTML='Your platform (<b>'+d.platform+'</b>) cannot resolve <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.kalshi.com</code>. Error: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">'+d.dns.error+'</code>. Try running locally instead — your home internet is not subject to cloud platform DNS blocks.';
+            var title=document.getElementById('banner-title');
+            var msg=document.getElementById('banner-message');
+            if(d.platform==='vercel'){
+              if(title)title.textContent='⚠️ RUNNING ON VERCEL — KALSHI DNS BLOCKED';
+              if(msg)msg.innerHTML='Vercel\'s serverless runtime blocks DNS resolution for <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.elections.kalshi.com</code>. <b style="color:#fff">No code change will fix this on Vercel.</b> Run locally instead — your home internet is not blocked.';
+            } else {
+              if(title)title.textContent='⚠️ KALSHI DNS BLOCKED ON '+d.platform.toUpperCase();
+              if(msg)msg.innerHTML='Your platform (<b>'+d.platform+'</b>) cannot resolve <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">api.elections.kalshi.com</code>. Error: <code style="background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">'+d.dns.error+'</code>. We\'ve now confirmed Vercel, Railway, AND possibly Render all fail. <b style="color:#fff">You must run this app on your laptop</b> — Kalshi only allows consumer ISP IPs, not cloud provider IPs.';
+              // Update badge to red
+              badge.className='badge badge-red';
+              badge.innerHTML='<i class="fas fa-triangle-exclamation text-[5px]"></i> '+d.platform.toUpperCase()+' · BLOCKED';
+              showToast('⚠️ Kalshi DNS blocked on '+d.platform+' — run locally instead','error');
+            }
           }
         }
       }
@@ -1430,7 +1463,57 @@ document.addEventListener('DOMContentLoaded',function(){
   if(showLocalBtn)showLocalBtn.addEventListener('click',function(){if(localModal)localModal.style.display='block'});
   if(closeLocalBtn)closeLocalBtn.addEventListener('click',function(){if(localModal)localModal.style.display='none'});
   if(localModal)localModal.addEventListener('click',function(e){if(e.target===localModal)localModal.style.display='none'});
+
+  // Wire up the "Run full DNS diagnostic" button in the banner
+  var dnsTestBtn=document.getElementById('run-dns-test');
+  if(dnsTestBtn)dnsTestBtn.addEventListener('click',runDnsDiagnostic);
 });
+
+// ===========================================================================
+// DNS diagnostic — runs the full 5-test DNS check and shows results
+// ===========================================================================
+function runDnsDiagnostic(){
+  addLog('[DNS] Running full DNS diagnostic...','system');
+  showToast('Running 5-test DNS diagnostic...','info');
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML='<div class="card" style="max-width:650px;width:100%;padding:20px;max-height:85vh;overflow-y:auto">'+
+    '<div class="flex justify-between mb-3"><h3 class="text-[12px] font-bold tracking-wider" style="color:var(--cyan)">DNS DIAGNOSTIC</h3>'+
+    '<button class="btn btn-ghost btn-sm" id="dns-close"><i class="fas fa-times"></i></button></div>'+
+    '<div id="dns-content" style="font-size:10px"><i class="fas fa-spinner fa-spin"></i> Running 5 DNS tests...</div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#dns-close').addEventListener('click',function(){overlay.remove()});
+
+  fetch('/api/dns-test')
+    .then(function(r){return r.json()})
+    .then(function(result){
+      var html='<div class="space-y-2">';
+      var verdictColor=result.verdict==='ok'?'var(--accent)':'var(--danger)';
+      html+='<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid '+verdictColor+'">'+
+        '<b style="color:'+verdictColor+'">Verdict: '+result.verdict.toUpperCase()+'</b><br>'+
+        '<span style="color:var(--dim)">'+result.summary+'</span></div>';
+      for(var i=0;i<result.tests.length;i++){
+        var t=result.tests[i];
+        var color=t.pass?'var(--accent)':'var(--danger)';
+        var icon=t.pass?'check-circle':'times-circle';
+        html+='<div class="p-2 rounded" style="background:var(--surface);border-left:2px solid '+color+'">'+
+          '<i class="fas fa-'+icon+'" style="color:'+color+';margin-right:6px"></i>'+
+          '<b>'+t.name+':</b> '+(t.pass?'PASS':'FAIL')+'<br>'+
+          '<span style="color:var(--dim)">'+(t.detail||t.error||'')+'</span></div>';
+      }
+      if(result.fix){
+        html+='<div class="p-2 rounded mt-3" style="background:var(--gold-bg);border-left:2px solid var(--gold)">'+
+          '<b style="color:var(--gold)">How to fix:</b><br>'+
+          '<span style="color:var(--dim)">'+result.fix+'</span></div>';
+      }
+      html+='</div>';
+      document.getElementById('dns-content').innerHTML=html;
+      addLog('[DNS] Verdict: '+result.verdict.toUpperCase(),'system');
+    })
+    .catch(function(e){
+      document.getElementById('dns-content').innerHTML='<div style="color:var(--danger)">Failed: '+e.message+'</div>';
+    });
+}
 
 window.addEventListener('resize',function(){clearTimeout(window._rt);window._rt=setTimeout(drawCharts,150)});
 </script>

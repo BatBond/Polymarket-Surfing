@@ -26,18 +26,18 @@ export default async function handler(req, res) {
     platform: process.env.RENDER ? 'render' : process.env.VERCEL ? 'vercel' : 'unknown',
   };
 
-  // STEP 0: DNS diagnostic — try to resolve api.kalshi.com directly
+  // STEP 0: DNS diagnostic — try to resolve api.elections.kalshi.com directly
   // This tells us if the issue is DNS-specific or network-wide
   try {
-    const addresses = await lookup('api.kalshi.com', { all: true });
+    const addresses = await lookup('api.elections.kalshi.com', { all: true });
     report.steps.push({
-      name: 'DNS resolves api.kalshi.com',
+      name: 'DNS resolves api.elections.kalshi.com',
       pass: true,
       detail: 'Yes — resolved to: ' + addresses.map(a => a.address).join(', '),
     });
   } catch (dnsErr) {
     report.steps.push({
-      name: 'DNS resolves api.kalshi.com',
+      name: 'DNS resolves api.elections.kalshi.com',
       pass: false,
       detail: 'No — ' + dnsErr.code + ': ' + dnsErr.message,
       hint: 'DNS resolution failed. This could be: (1) a platform network restriction, (2) Kalshi blocking cloud provider IP ranges, (3) a regional DNS issue. Try deploying to a different platform (Render, Railway) or region.',
@@ -58,13 +58,13 @@ export default async function handler(req, res) {
       name: 'General internet reachable (google.com)',
       pass: false,
       detail: 'No — ' + cause,
-      hint: 'If google.com also fails, the platform has no outbound internet. If google.com works but api.kalshi.com fails, Kalshi is specifically blocking this platform/region.',
+      hint: 'If google.com also fails, the platform has no outbound internet. If google.com works but api.elections.kalshi.com fails, Kalshi is specifically blocking this platform/region.',
     });
   }
 
   // STEP 1: Kalshi API reachable (markets endpoint, no auth needed for this test)
   try {
-    const r = await fetch('https://api.kalshi.com/trade-api/v2/markets?limit=1', {
+    const r = await fetch('https://api.elections.kalshi.com/trade-api/v2/markets?limit=1', {
       headers: { 'Accept': 'application/json', 'User-Agent': 'FableElite/8.1-health' },
     });
     report.steps.push({
@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       name: 'Kalshi API reachable (markets endpoint)',
       pass: false,
       detail: 'No — ' + cause,
-      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.kalshi.com. If google.com works above but this fails, Kalshi is blocking your platform. Try Render (different IP range) or a Vercel US region.' :
+      hint: cause === 'ENOTFOUND' ? 'DNS resolution failed for api.elections.kalshi.com. If google.com works above but this fails, Kalshi is blocking your platform. Try Render (different IP range) or a Vercel US region.' :
             cause === 'ETIMEDOUT' || cause === 'UND_ERR_CONNECT_TIMEOUT' ? 'Connection timed out. Kalshi may be blocking Vercel IPs in your region (' + report.vercel_region + ').' :
             'Network error: ' + cause,
     });
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
   const creds = getKalshiCreds();
   let testHeaders;
   try {
-    testHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balances');
+    testHeaders = kalshiHeaders(creds, 'GET', '/portfolio/balance');
     report.steps.push({ name: 'PEM signs request', pass: true, detail: 'Yes — RSA signature generated' });
   } catch (e) {
     report.steps.push({
@@ -122,7 +122,7 @@ export default async function handler(req, res) {
   // STEP 4: Does Kalshi accept our auth? (uses fetchWithRetry now)
   try {
     const balResult = await fetchWithRetry(
-      'https://api.kalshi.com/trade-api/v2/portfolio/balances',
+      'https://api.elections.kalshi.com/trade-api/v2/portfolio/balance',
       { headers: testHeaders }
     );
 
@@ -177,7 +177,7 @@ export default async function handler(req, res) {
       ...kalshiHeaders(creds, 'POST', '/portfolio/orders'),
     };
     const orderResult = await fetchWithRetry(
-      'https://api.kalshi.com/trade-api/v2/portfolio/orders',
+      'https://api.elections.kalshi.com/trade-api/v2/portfolio/orders',
       { method: 'POST', headers: orderHeaders, body: JSON.stringify({}) }
     );
 
